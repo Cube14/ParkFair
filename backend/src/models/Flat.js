@@ -11,8 +11,40 @@ const flatSchema = new mongoose.Schema(
 
     ownerName: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
+    },
+
+    contactNumber: {
+      type: String,
+      default: "",
+    },
+
+    email: {
+      type: String,
+      default: "",
+      lowercase: true,
+    },
+
+    wing: {
+      type: String,
+      default: "A",
+    },
+
+    floor: {
+      type: Number,
+      default: 1,
+    },
+
+    isRegistered: {
+      type: Boolean,
+      default: false,
+    },
+
+    role: {
+      type: String,
+      enum: ["RESIDENT", "ADMIN", "SUPER_ADMIN"],
+      default: "RESIDENT",
     },
 
     isActive: {

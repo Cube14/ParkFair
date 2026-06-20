@@ -3,15 +3,18 @@ const cors = require("cors");
 
 const healthRoutes = require("./routes/healthRoutes");
 const flatRoutes = require("./routes/flatRoutes");
+const vehicleRoutes = require("./routes/vehicleRoutes");
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/api/flats", flatRoutes);
+
 // Routes
 app.use("/api/health", healthRoutes);
+app.use("/api/flats", flatRoutes);
+app.use("/api/vehicles", vehicleRoutes);
 
 // Root Route
 app.get("/", (req, res) => {
