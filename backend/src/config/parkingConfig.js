@@ -1,0 +1,9 @@
+module.exports = {
+  INSIDE_SLOTS: 8,
+
+  ROTATION_DAYS: 10,
+
+  TARGET_INSIDE_ROTATIONS: 8,
+
+  TARGET_OUTSIDE_ROTATIONS: 6,
+};

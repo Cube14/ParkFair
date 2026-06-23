@@ -2,8 +2,15 @@ const express = require("express");
 const cors = require("cors");
 
 const healthRoutes = require("./routes/healthRoutes");
+const parkingSlotRoutes = require("./routes/parkingSlotRoutes");
 const flatRoutes = require("./routes/flatRoutes");
 const vehicleRoutes = require("./routes/vehicleRoutes");
+const parkingCycleRoutes = require("./routes/parkingCycleRoutes");
+const parkingAssignmentRoutes = require("./routes/parkingAssignmentRoutes");
+const layoutRoutes = require("./routes/layoutRoutes");
+const allocationRoutes = require(
+  "./routes/allocationRoutes"
+);
 const app = express();
 
 // Middleware
@@ -15,7 +22,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/health", healthRoutes);
 app.use("/api/flats", flatRoutes);
 app.use("/api/vehicles", vehicleRoutes);
-
+app.use("/api/layouts", layoutRoutes);
+app.use("/api/cycles", parkingCycleRoutes);
+app.use("/api/assignments", parkingAssignmentRoutes);
+app.use("/api/slots", parkingSlotRoutes);
+app.use("/api/allocations", allocationRoutes);
 // Root Route
 app.get("/", (req, res) => {
   res.status(200).json({
