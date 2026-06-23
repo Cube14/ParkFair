@@ -6,6 +6,7 @@ const parkingSlotRoutes = require("./routes/parkingSlotRoutes");
 const flatRoutes = require("./routes/flatRoutes");
 const vehicleRoutes = require("./routes/vehicleRoutes");
 const parkingCycleRoutes = require("./routes/parkingCycleRoutes");
+const cycleSummaryRoutes = require("./routes/cycleSummaryRoutes");
 const parkingAssignmentRoutes = require("./routes/parkingAssignmentRoutes");
 const layoutRoutes = require("./routes/layoutRoutes");
 const allocationRoutes = require(
@@ -27,6 +28,7 @@ app.use("/api/cycles", parkingCycleRoutes);
 app.use("/api/assignments", parkingAssignmentRoutes);
 app.use("/api/slots", parkingSlotRoutes);
 app.use("/api/allocations", allocationRoutes);
+app.use("/api/cycles", cycleSummaryRoutes);
 // Root Route
 app.get("/", (req, res) => {
   res.status(200).json({

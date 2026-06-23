@@ -11,9 +11,9 @@ const vehicleSchema = new mongoose.Schema(
     },
 
     vehicleType: {
-      type: String,
-      enum: ["CAR", "BIKE"],
-      default: "CAR",
+        type: String,
+        enum: ["CAR", "BIKE", "OTHER"],
+        default: "CAR",
     },
 
     flatId: {
