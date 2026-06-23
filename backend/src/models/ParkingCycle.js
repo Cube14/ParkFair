@@ -5,6 +5,7 @@ const parkingCycleSchema = new mongoose.Schema(
     cycleName: {
       type: String,
       required: true,
+      unique: true,
       trim: true,
     },
 

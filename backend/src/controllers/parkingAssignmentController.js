@@ -212,9 +212,114 @@ const resetAssignments = async (req, res) => {
   }
 };
 
+
+const updateAssignment = async (
+  req,
+  res
+) => {
+  try {
+    const assignment =
+      await ParkingAssignment.findById(
+        req.params.id
+      );
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found",
+      });
+    }
+
+    const newSlot =
+      await ParkingSlot.findById(
+        req.body.slotId
+      );
+
+    if (!newSlot) {
+      return res.status(404).json({
+        success: false,
+        message: "Slot not found",
+      });
+    }
+
+    const currentAssignments =
+      await ParkingAssignment.countDocuments({
+        cycleId: assignment.cycleId,
+        slotId: newSlot._id,
+        assignmentStatus: "ACTIVE",
+        _id: { $ne: assignment._id },
+      });
+
+    if (
+      currentAssignments >=
+      newSlot.maxCapacity
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `Slot ${newSlot.slotNumber} is full`,
+      });
+    }
+
+    assignment.slotId = newSlot._id;
+
+    assignment.parkingType =
+      newSlot.slotNumber === "OUTSIDE"
+        ? "OUTSIDE"
+        : "INSIDE";
+
+    await assignment.save();
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Assignment updated successfully",
+      data: assignment,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const deleteAssignment = async (
+  req,
+  res
+) => {
+  try {
+    const assignment =
+      await ParkingAssignment.findByIdAndDelete(
+        req.params.id
+      );
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Assignment deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
 module.exports = {
   createAssignment,
   getAssignments,
   createBulkAssignments,
   resetAssignments,
+  updateAssignment,
+  deleteAssignment,
 };
+

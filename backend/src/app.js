@@ -8,6 +8,7 @@ const vehicleRoutes = require("./routes/vehicleRoutes");
 const parkingCycleRoutes = require("./routes/parkingCycleRoutes");
 const cycleSummaryRoutes = require("./routes/cycleSummaryRoutes");
 const parkingAssignmentRoutes = require("./routes/parkingAssignmentRoutes");
+const cycleMatrixRoutes = require("./routes/cycleMatrixRoutes");
 const layoutRoutes = require("./routes/layoutRoutes");
 const allocationRoutes = require(
   "./routes/allocationRoutes"
@@ -26,6 +27,7 @@ app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/layouts", layoutRoutes);
 app.use("/api/cycles", parkingCycleRoutes);
 app.use("/api/assignments", parkingAssignmentRoutes);
+app.use("/api/cycles", cycleMatrixRoutes);
 app.use("/api/slots", parkingSlotRoutes);
 app.use("/api/allocations", allocationRoutes);
 app.use("/api/cycles", cycleSummaryRoutes);
