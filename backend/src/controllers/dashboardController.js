@@ -40,6 +40,54 @@ const getDashboardData = async (
         });
     }
 
+    const insideAssignments =
+      await ParkingAssignment.countDocuments({
+        parkingType: "INSIDE",
+        assignmentStatus: "ACTIVE",
+      });
+
+    const outsideAssignments =
+      await ParkingAssignment.countDocuments({
+        parkingType: "OUTSIDE",
+        assignmentStatus: "ACTIVE",
+      });
+
+    const totalCapacity =
+      (
+        await ParkingSlot.find({
+          isActive: true,
+        })
+      ).reduce(
+        (sum, slot) =>
+          sum + slot.maxCapacity,
+        0
+      );
+
+    const occupancyPercentage =
+      totalCapacity > 0
+        ? Math.round(
+            ((insideAssignments +
+              outsideAssignments) /
+              totalCapacity) *
+              100
+          )
+        : 0;
+
+    const recentAssignments =
+      await ParkingAssignment.find()
+        .populate(
+          "flatId",
+          "flatNumber"
+        )
+        .populate(
+          "slotId",
+          "slotNumber"
+        )
+        .sort({
+          createdAt: -1,
+        })
+        .limit(5);
+
     res.status(200).json({
       success: true,
       data: {
@@ -49,18 +97,36 @@ const getDashboardData = async (
         totalCycles,
 
         activeCycle:
-          activeCycle?.cycleName || null,
+          activeCycle?.cycleName ||
+          null,
 
         activeCycleAssignments,
 
         activeCycleStartDate:
-          activeCycle?.startDate || null,
+          activeCycle?.startDate ||
+          null,
 
         activeCycleEndDate:
-          activeCycle?.endDate || null,
+          activeCycle?.endDate ||
+          null,
 
         activeCycleStatus:
-          activeCycle?.status || null,
+          activeCycle?.status ||
+          null,
+
+        insideAssignments,
+        outsideAssignments,
+
+        totalCapacity,
+
+        availableCapacity:
+          totalCapacity -
+          (insideAssignments +
+            outsideAssignments),
+
+        occupancyPercentage,
+
+        recentAssignments,
       },
     });
   } catch (error) {

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import PageHeader from "../components/ui/PageHeader";
 import ActionButton from "../components/ui/ActionButton";
 import Modal from "../components/ui/Modal";
+import StatusBadge from "../components/ui/StatusBadge";
 
 function Assignments() {
   const [assignments, setAssignments] =
@@ -52,7 +53,17 @@ function Assignments() {
     loadFlats();
     loadVehicles();
   }, []);
+const handleFlatChange = (flatId) => {
+  const vehicle = vehicles.find(
+    (v) => v.flatId?._id === flatId
+  );
 
+  setFormData((prev) => ({
+    ...prev,
+    flatId,
+    vehicleId: vehicle?._id || "",
+  }));
+};
   const loadAssignments =
     async () => {
       try {
@@ -341,6 +352,59 @@ function Assignments() {
           rounded-3xl
         "
       >
+            <div className="grid md:grid-cols-4 gap-4 mb-8">
+  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+    <p className="text-zinc-400 text-sm">
+      Assignments
+    </p>
+    <h2 className="text-3xl font-bold">
+      {assignments.length}
+    </h2>
+  </div>
+
+  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+    <p className="text-zinc-400 text-sm">
+      Inside
+    </p>
+    <h2 className="text-3xl font-bold">
+      {
+        assignments.filter(
+          (a) => a.parkingType === "INSIDE"
+        ).length
+      }
+    </h2>
+  </div>
+
+  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+    <p className="text-zinc-400 text-sm">
+      Outside
+    </p>
+    <h2 className="text-3xl font-bold">
+      {
+        assignments.filter(
+          (a) => a.parkingType === "OUTSIDE"
+        ).length
+      }
+    </h2>
+  </div>
+
+  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+    <p className="text-zinc-400 text-sm">
+      Active
+    </p>
+    <h2 className="text-3xl font-bold">
+      {
+        assignments.filter(
+          (a) =>
+            a.assignmentStatus ===
+            "ACTIVE"
+        ).length
+      }
+    </h2>
+  </div>
+</div>
+
+
         <table className="w-full">
           <thead>
             <tr className="border-b border-zinc-800">
@@ -362,6 +426,9 @@ function Assignments() {
 
               <th className="p-4 text-left">
                 Type
+              </th>
+            <th className="p-4 text-left">
+                Status
               </th>
 
               <th className="p-4 text-left">
@@ -416,7 +483,13 @@ function Assignments() {
                       assignment.parkingType
                     }
                   </td>
-
+                    <td className="p-4">
+  <StatusBadge
+    status={
+      assignment.assignmentStatus
+    }
+  />
+</td>
                   <td className="p-4 flex gap-2">
                     <ActionButton
                       variant="secondary"
@@ -502,12 +575,10 @@ function Assignments() {
                   formData.flatId
                 }
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    flatId:
-                      e.target.value,
-                  })
-                }
+  handleFlatChange(
+    e.target.value
+  )
+}
                 className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3"
               >
                 <option value="">
@@ -599,9 +670,14 @@ function Assignments() {
                   }
                 >
                   Slot{" "}
-                  {
-                    slot.slotNumber
-                  }
+{
+  slot.slotNumber
+}
+(
+{
+  slot.maxCapacity
+}
+)
                 </option>
               )
             )}

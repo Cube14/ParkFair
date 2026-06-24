@@ -1,14 +1,34 @@
 import { motion } from "framer-motion";
 
+import { useTheme } from "../context/ThemeContext";
+import { getThemeClasses } from "../utils/theme";
+
 function StatCard({
   title,
   value,
+  icon,
+  color = "red",
 }) {
+  const { theme } =
+    useTheme();
+
+  const styles =
+    getThemeClasses(theme);
+
+  const colorClasses = {
+    red: "text-red-500",
+    green: "text-green-500",
+    blue: "text-blue-500",
+    yellow: "text-yellow-500",
+    purple: "text-purple-500",
+    orange: "text-orange-500",
+  };
+
   return (
     <motion.div
       initial={{
         opacity: 0,
-        y: 40,
+        y: 30,
       }}
       animate={{
         opacity: 1,
@@ -19,24 +39,43 @@ function StatCard({
         scale: 1.02,
       }}
       transition={{
-        duration: 0.4,
+        duration: 0.3,
       }}
-      className="
-      bg-zinc-900/70
-      backdrop-blur-xl
-      border border-zinc-800
-      rounded-2xl
-      p-6
-      shadow-xl
-    "
+      className={`
+        ${styles.card}
+        backdrop-blur-xl
+        border
+        rounded-3xl
+        p-6
+        transition-all
+        duration-300
+        hover:border-red-500/50
+      `}
     >
-      <h3 className="text-zinc-400">
-        {title}
-      </h3>
+      <div className="flex justify-between items-center">
+        <div>
+          <p
+            className={`
+              text-sm
+              ${styles.muted}
+            `}
+          >
+            {title}
+          </p>
 
-      <p className="text-4xl font-bold mt-2">
-        {value}
-      </p>
+          <h2 className="text-4xl font-bold mt-2">
+            {value}
+          </h2>
+        </div>
+
+        <div
+          className={`text-4xl ${
+            colorClasses[color]
+          }`}
+        >
+          {icon}
+        </div>
+      </div>
     </motion.div>
   );
 }

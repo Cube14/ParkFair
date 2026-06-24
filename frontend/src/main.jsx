@@ -10,44 +10,52 @@ import {
   CycleProvider,
 } from "./context/CycleContext";
 
+import {
+  ThemeProvider,
+} from "./context/ThemeContext";
+
 ReactDOM.createRoot(
   document.getElementById("root")
 ).render(
   <React.StrictMode>
 
-    <CycleProvider>
+    <ThemeProvider>
 
-      <App />
+      <CycleProvider>
 
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
+        <App />
 
-          style: {
-            background: "#18181b",
-            color: "#ffffff",
-            border:
-              "1px solid #3f3f46",
-          },
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
 
-          success: {
-            iconTheme: {
-              primary: "#22c55e",
-              secondary: "#fff",
+            style: {
+              background: "#18181b",
+              color: "#ffffff",
+              border:
+                "1px solid #3f3f46",
             },
-          },
 
-          error: {
-            iconTheme: {
-              primary: "#ef4444",
-              secondary: "#fff",
+            success: {
+              iconTheme: {
+                primary: "#22c55e",
+                secondary: "#fff",
+              },
             },
-          },
-        }}
-      />
 
-    </CycleProvider>
+            error: {
+              iconTheme: {
+                primary: "#ef4444",
+                secondary: "#fff",
+              },
+            },
+          }}
+        />
+
+      </CycleProvider>
+
+    </ThemeProvider>
 
   </React.StrictMode>
 );
