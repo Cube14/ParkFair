@@ -1,5 +1,7 @@
 const Flat = require("../models/Flat");
-
+const ParkingAssignment = require(
+  "../models/ParkingAssignment"
+);
 /*
 |--------------------------------------------------------------------------
 | Get All Flats
@@ -55,8 +57,72 @@ const createFlat = async (req, res) => {
   }
 };
 
+const getFlatHistory = async (
+  req,
+  res
+) => {
+  try {
+    const flat =
+      await Flat.findById(
+        req.params.flatId
+      );
+
+    if (!flat) {
+      return res.status(404).json({
+        success: false,
+        message: "Flat not found",
+      });
+    }
+
+    const history =
+      await ParkingAssignment.find({
+        flatId: flat._id,
+      })
+        .populate(
+          "cycleId",
+          "cycleName"
+        )
+        .populate(
+          "slotId",
+          "slotNumber"
+        )
+        .sort({
+          createdAt: 1,
+        });
+
+    const formattedHistory =
+      history.map((item) => ({
+        cycle:
+          item.cycleId?.cycleName ||
+          "Unknown",
+        slot:
+          item.slotId?.slotNumber ||
+          "Unknown",
+        parkingType:
+          item.parkingType,
+        status:
+          item.assignmentStatus,
+      }));
+
+    res.status(200).json({
+      success: true,
+      flatNumber:
+        flat.flatNumber,
+      history:
+        formattedHistory,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
 
 module.exports = {
   getAllFlats,
   createFlat,
+  getFlatHistory,
 };

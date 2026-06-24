@@ -50,6 +50,107 @@ const getCycles = async (req, res) => {
   }
 };
 
+const updateCycleStatus = async (
+  req,
+  res
+) => {
+  try {
+    const { status } = req.body;
+
+    const cycle =
+      await ParkingCycle.findById(
+        req.params.id
+      );
+
+    if (!cycle) {
+      return res.status(404).json({
+        success: false,
+        message: "Cycle not found",
+      });
+    }
+
+    const validStatuses = [
+      "PLANNED",
+      "ACTIVE",
+      "COMPLETED",
+    ];
+
+    if (
+      !validStatuses.includes(status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid status value",
+      });
+    }
+
+    // Only one ACTIVE cycle at a time
+    if (status === "ACTIVE") {
+      await ParkingCycle.updateMany(
+        { status: "ACTIVE" },
+        { status: "COMPLETED" }
+      );
+    }
+
+    cycle.status = status;
+
+    await cycle.save();
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Cycle status updated",
+      data: cycle,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+
+const completeCycle = async (
+  req,
+  res
+) => {
+  try {
+    const cycle =
+      await ParkingCycle.findById(
+        req.params.id
+      );
+
+    if (!cycle) {
+      return res.status(404).json({
+        success: false,
+        message: "Cycle not found",
+      });
+    }
+
+    cycle.status = "COMPLETED";
+
+    await cycle.save();
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Cycle completed successfully",
+      data: cycle,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+
+
 const deleteCycle = async (
   req,
   res
@@ -71,8 +172,12 @@ const deleteCycle = async (
   }
 };
 
+
+
 module.exports = {
   createCycle,
   getCycles,
   deleteCycle,
+  updateCycleStatus,
+  completeCycle,
 };

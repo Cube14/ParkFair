@@ -7,9 +7,16 @@ const allocationSchema = new mongoose.Schema(
       ref: "Flat",
       required: true,
     },
-
-    rotationNumber: {
-      type: Number,
+    
+    vehicleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vehicle",
+      required: true,
+    },
+    
+    rotationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Rotation",
       required: true,
     },
 
