@@ -3,6 +3,8 @@ import api from "../services/api";
 
 import StatCard from "../components/StatCard";
 
+import toast from "react-hot-toast";
+
 function Dashboard() {
   const [stats, setStats] = useState(null);
 
@@ -16,6 +18,10 @@ function Dashboard() {
         console.error(
           "Dashboard Load Error:",
           error
+        );
+
+        toast.error(
+          "Failed to load dashboard"
         );
       }
     };
@@ -34,6 +40,7 @@ function Dashboard() {
   return (
     <div>
       {/* Header */}
+
       <div className="mb-10">
         <h1 className="text-5xl font-bold">
           ParkFair Dashboard
@@ -45,7 +52,8 @@ function Dashboard() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid md:grid-cols-5 gap-6">
+
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
 
         <StatCard
           title="Flats"
@@ -77,6 +85,7 @@ function Dashboard() {
       </div>
 
       {/* Current Active Cycle */}
+
       <div className="mt-10">
 
         <h2 className="text-3xl font-bold mb-6">
@@ -85,12 +94,13 @@ function Dashboard() {
 
         <div
           className="
-          bg-zinc-900/70
-          border border-zinc-800
-          rounded-2xl
-          p-6
-          backdrop-blur-xl
-        "
+            bg-zinc-900/70
+            border
+            border-zinc-800
+            rounded-2xl
+            p-6
+            backdrop-blur-xl
+          "
         >
           {stats.activeCycle ? (
             <>
@@ -133,21 +143,23 @@ function Dashboard() {
               </div>
             </>
           ) : (
-            <div>
+            <>
               <h3 className="text-2xl font-semibold">
                 No Active Cycle
               </h3>
 
               <p className="text-zinc-500 mt-2">
-                Activate a cycle to begin parking allocation.
+                Activate a cycle to begin
+                parking allocation.
               </p>
-            </div>
+            </>
           )}
         </div>
 
       </div>
 
-      {/* Quick Actions Placeholder */}
+      {/* Quick Actions */}
+
       <div className="mt-10">
 
         <h2 className="text-3xl font-bold mb-6">
@@ -158,42 +170,45 @@ function Dashboard() {
 
           <div
             className="
-            bg-zinc-900
-            border border-zinc-800
-            rounded-2xl
-            p-6
-            cursor-pointer
-            hover:border-red-500
-            transition
-          "
+              bg-zinc-900
+              border
+              border-zinc-800
+              rounded-2xl
+              p-6
+              cursor-pointer
+              hover:border-red-500
+              transition
+            "
           >
             Create New Cycle
           </div>
 
           <div
             className="
-            bg-zinc-900
-            border border-zinc-800
-            rounded-2xl
-            p-6
-            cursor-pointer
-            hover:border-red-500
-            transition
-          "
+              bg-zinc-900
+              border
+              border-zinc-800
+              rounded-2xl
+              p-6
+              cursor-pointer
+              hover:border-red-500
+              transition
+            "
           >
             View Parking Layout
           </div>
 
           <div
             className="
-            bg-zinc-900
-            border border-zinc-800
-            rounded-2xl
-            p-6
-            cursor-pointer
-            hover:border-red-500
-            transition
-          "
+              bg-zinc-900
+              border
+              border-zinc-800
+              rounded-2xl
+              p-6
+              cursor-pointer
+              hover:border-red-500
+              transition
+            "
           >
             Manage Assignments
           </div>
@@ -201,6 +216,7 @@ function Dashboard() {
         </div>
 
       </div>
+
     </div>
   );
 }

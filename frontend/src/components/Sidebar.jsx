@@ -16,27 +16,48 @@ function Sidebar() {
     useState(false);
 
   const menuItems = [
-    {
-      name: "Dashboard",
-      icon: LayoutDashboard,
-      path: "/",
-    },
-    {
-      name: "Parking Layout",
-      icon: Car,
-      path: "/layout",
-    },
-    {
-      name: "Cycles",
-      icon: Calendar,
-      path: "/cycles",
-    },
-    {
-      name: "Analytics",
-      icon: BarChart3,
-      path: "/analytics",
-    },
-  ];
+  {
+    name: "Dashboard",
+    icon: LayoutDashboard,
+    path: "/",
+  },
+
+  {
+    name: "Flats",
+    icon: Car,
+    path: "/flats",
+  },
+
+  {
+    name: "Vehicles",
+    icon: Car,
+    path: "/vehicles",
+  },
+
+  {
+    name: "Cycles",
+    icon: Calendar,
+    path: "/cycles",
+  },
+
+  {
+    name: "Assignments",
+    icon: Calendar,
+    path: "/assignments",
+  },
+
+  {
+    name: "Parking Layout",
+    icon: Car,
+    path: "/layout",
+  },
+
+  {
+    name: "Analytics",
+    icon: BarChart3,
+    path: "/analytics",
+  },
+];
 
   return (
     <>

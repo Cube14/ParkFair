@@ -6,10 +6,16 @@ const router = express.Router();
 const {
   getAllVehicles,
   createVehicle,
+  updateVehicle,
+  deleteVehicle,
 } = require("../controllers/vehicleController");
 
 router.get("/", getAllVehicles);
 
 router.post("/", createVehicle);
+
+router.put("/:id", updateVehicle);
+
+router.delete("/:id", deleteVehicle);
 
 module.exports = router;

@@ -119,10 +119,66 @@ const getFlatHistory = async (
   }
 };
 
+const updateFlat = async (req, res) => {
+  try {
+    const flat = await Flat.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
+    if (!flat) {
+      return res.status(404).json({
+        success: false,
+        message: "Flat not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: flat,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const deleteFlat = async (req, res) => {
+  try {
+    const flat =
+      await Flat.findByIdAndDelete(
+        req.params.id
+      );
+
+    if (!flat) {
+      return res.status(404).json({
+        success: false,
+        message: "Flat not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Flat deleted",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 module.exports = {
   getAllFlats,
   createFlat,
   getFlatHistory,
+  updateFlat,
+  deleteFlat,
 };

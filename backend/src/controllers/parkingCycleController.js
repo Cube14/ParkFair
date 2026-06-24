@@ -34,7 +34,7 @@ const getCycles = async (req, res) => {
   try {
     const cycles =
       await ParkingCycle.find().sort({
-        startDate: -1,
+        startDate: 1,
       });
 
     res.status(200).json({
