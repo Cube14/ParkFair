@@ -1,8 +1,22 @@
 import { useEffect, useState } from "react";
+
 import api from "../services/api";
 
 import { useCycle } from "../context/CycleContext";
+import { useTheme } from "../context/ThemeContext";
+
+import { getThemeClasses } from "../utils/theme";
+
 import CycleSelector from "../components/CycleSelector";
+
+import {
+  ParkingCircle,
+  Gauge,
+  Building2,
+  MapPinned,
+  Activity,
+  CarFront,
+} from "lucide-react";
 
 function ParkingLayout() {
   const [matrix, setMatrix] =
@@ -10,6 +24,12 @@ function ParkingLayout() {
 
   const { selectedCycle } =
     useCycle();
+
+  const { theme } =
+    useTheme();
+
+  const styles =
+    getThemeClasses(theme);
 
   useEffect(() => {
     if (selectedCycle) {
@@ -82,187 +102,287 @@ function ParkingLayout() {
         100
     );
 
-  const renderSlot = (
-    slotNumber,
-    extraClass = ""
-  ) => {
-    const flats =
-      matrix?.[slotNumber] || [];
+  const outsideCount =
+    matrix?.OUTSIDE?.length ||
+    0;
 
-    const capacityMap = {
-      "1": 2,
-      "2": 2,
-      "3": 1,
-      "4": 1,
-      "5": 2,
-      "6": 2,
-      "7": 1,
-      "8": 1,
-      OUTSIDE: 4,
-    };
+ const renderSlot = (
+  slotNumber,
+  extraClass = ""
+) => {
+  const flats =
+    matrix?.[slotNumber] || [];
 
-    const capacity =
-      capacityMap[slotNumber];
+  const capacityMap = {
+    "1": 2,
+    "2": 2,
+    "3": 1,
+    "4": 1,
+    "5": 2,
+    "6": 2,
+    "7": 1,
+    "8": 1,
+    OUTSIDE: 4,
+  };
 
-    const occupied =
-      flats.length;
+  const capacity =
+    capacityMap[slotNumber];
 
-    const isFull =
-      occupied >= capacity;
+  const occupied =
+    flats.length;
 
-    const isPartial =
-      occupied > 0 &&
-      occupied < capacity;
+  const isFull =
+    occupied >= capacity;
 
-    let border =
-      "border-zinc-800";
+  const isPartial =
+    occupied > 0 &&
+    occupied < capacity;
 
-    let glow = "";
+  let border =
+    theme === "dark"
+      ? "border-zinc-800"
+      : "border-zinc-300";
 
-    let status = "EMPTY";
+  let glow = "";
 
-    if (isFull) {
-      border =
-        "border-red-500";
+  let badge =
+    theme === "dark"
+      ? "bg-zinc-800"
+      : "bg-zinc-200";
 
-      glow =
-        "shadow-red-500/20";
+  let status = "EMPTY";
 
-      status = "FULL";
-    }
+  if (isFull) {
+    border =
+      "border-red-500";
 
-    if (isPartial) {
-      border =
-        "border-yellow-500";
+    glow =
+      "shadow-red-500/20";
 
-      glow =
-        "shadow-yellow-500/20";
+    badge =
+      "bg-red-500 text-white";
 
-      status = "PARTIAL";
-    }
+    status = "FULL";
+  }
 
-    return (
-      <div
-  className={`
-    bg-zinc-900/90
-    backdrop-blur-xl
-    border
-    ${border}
-    rounded-3xl
-    p-4
-    flex
-    flex-col
-    transition-all
-    duration-300
-    hover:scale-105
-    hover:shadow-xl
-    overflow-y-auto
-    ${glow}
-    ${extraClass}
-  `}
->
-        <div>
+  if (isPartial) {
+    border =
+      "border-yellow-500";
 
-          <div className="flex justify-between items-center">
+    glow =
+      "shadow-yellow-500/20";
 
-            <h3 className="font-bold text-xl">
-              SLOT {slotNumber}
-            </h3>
+    badge =
+      "bg-yellow-500 text-black";
 
-            <span
-              className="
+    status = "PARTIAL";
+  }
+
+  return (
+    <div
+      className={`
+        ${styles.slot}
+        border
+        ${border}
+        rounded-3xl
+        p-4
+        flex
+        flex-col
+        transition-all
+        duration-300
+        hover:scale-[1.02]
+        hover:shadow-xl
+        ${glow}
+        ${extraClass}
+      `}
+    >
+      <div>
+
+        <div className="flex justify-between items-center">
+
+          <h3
+            className="
+              font-black
+              text-xl
+              tracking-wide
+            "
+          >
+            SLOT {slotNumber}
+          </h3>
+
+          <span
+            className={`
               text-xs
-              px-2
+              px-3
               py-1
               rounded-full
-              bg-zinc-800
-            "
-            >
-              {status}
-            </span>
-
-          </div>
-
-          <div className="mt-3 text-sm text-zinc-400">
-
-            Capacity
-
-            <span className="ml-2 text-white font-semibold">
-              {occupied}/{capacity}
-            </span>
-
-          </div>
+              font-semibold
+              ${badge}
+            `}
+          >
+            {status}
+          </span>
 
         </div>
 
-        <div className="mt-4 flex flex-col gap-2">
+        <div
+          className={`
+            mt-3
+            text-sm
+            ${styles.muted}
+          `}
+        >
+          Capacity
 
-          {flats.length > 0 ? (
-            flats.map((flat) => (
-              <div
-                key={flat}
-                className="
-                  bg-red-500/10
-                  border
-                  border-red-500/30
-                  rounded-xl
-                  px-3
-                  py-2
-                  mb-2
-                  text-center
-                  font-medium
-                  min-h-[42px]
-                "
-              >
-                Flat {flat}
-              </div>
-            ))
-          ) : (
+          <span
+            className="
+              ml-2
+              font-bold
+            "
+          >
+            {occupied}/{capacity}
+          </span>
+
+        </div>
+
+      </div>
+
+      <div
+        className={`
+          mt-4
+          flex-1
+          ${
+            flats.length > 1
+              ? "grid grid-cols-1 gap-2"
+              : "flex items-center"
+          }
+        `}
+      >
+
+        {flats.length > 0 ? (
+          flats.map((flat) => (
             <div
+              key={`${slotNumber}-${flat}`}
               className="
-                h-16
+                bg-red-500/10
+                border
+                border-red-500/30
+                rounded-xl
+                px-3
+                py-3
+                text-center
+                font-semibold
+                min-h-[48px]
                 flex
                 items-center
                 justify-center
-                text-zinc-500
               "
             >
-              Available
+              Flat {flat}
             </div>
-          )}
+          ))
+        ) : (
+          <div
+            className={`
+              h-16
+              w-full
+              flex
+              items-center
+              justify-center
+              ${styles.muted}
+            `}
+          >
+            Available
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
+
+  return (
+    <div className="space-y-8">
+
+      {/* HERO */}
+
+      <div
+        className={`
+          ${styles.glassCard}
+          border
+          rounded-3xl
+          p-8
+          overflow-hidden
+          relative
+        `}
+      >
+        <div
+          className="
+            absolute
+            top-0
+            right-0
+            w-64
+            h-64
+            bg-red-500/10
+            blur-3xl
+            rounded-full
+          "
+        />
+
+        <div className="relative z-10">
+
+          <div
+            className="
+              inline-flex
+              items-center
+              gap-2
+              px-4
+              py-2
+              rounded-full
+              bg-red-500/10
+              border
+              border-red-500/20
+              text-red-500
+              text-sm
+              font-medium
+            "
+          >
+            <ParkingCircle size={16} />
+            LIVE PARKING MATRIX
+          </div>
+
+          <h1
+            className={`
+              text-5xl
+              lg:text-6xl
+              font-black
+              mt-6
+              ${styles.text}
+            `}
+          >
+            SIDDH-A
+            <br />
+            Parking Grid
+          </h1>
+
+          <p
+            className={`
+              mt-4
+              text-lg
+              ${styles.muted}
+            `}
+          >
+            Real-time parking
+            allocation overview
+            for the selected cycle.
+          </p>
 
         </div>
       </div>
-    );
-  };
 
-  return (
-    <div>
+      {/* SELECTOR */}
 
-      {/* HEADER */}
-
-      <div className="mb-8">
-
-        <h1
-          className="
-          text-5xl
-          font-bold
-          mb-3
-        "
-        >
-          SIDDH-A
-          Parking Command Center
-        </h1>
-
-        <p className="text-zinc-400">
-          Live Parking Matrix
-        </p>
-
-      </div>
-
-      {/* CYCLE SELECTOR */}
-
-      <div className="mb-8">
+      <div>
         <CycleSelector />
       </div>
 
@@ -270,120 +390,240 @@ function ParkingLayout() {
 
       <div
         className="
-        grid
-        md:grid-cols-4
-        gap-4
-        mb-8
-      "
+          grid
+          md:grid-cols-2
+          xl:grid-cols-4
+          gap-6
+        "
       >
+        <div
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-6
+          `}
+        >
+          <div className="flex justify-between">
+            <div>
+              <p className={styles.muted}>
+                Occupancy
+              </p>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
-          <p className="text-zinc-400">
-            Occupancy
-          </p>
+              <h2
+                className="
+                  text-4xl
+                  font-black
+                  mt-2
+                "
+              >
+                {
+                  occupancyPercentage
+                }
+                %
+              </h2>
+            </div>
 
-          <h2 className="text-4xl font-bold mt-2">
-            {occupancyPercentage}%
-          </h2>
+            <Gauge
+              className="
+                text-red-500
+              "
+              size={36}
+            />
+          </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
-          <p className="text-zinc-400">
-            Occupied
-          </p>
+        <div
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-6
+          `}
+        >
+          <div className="flex justify-between">
+            <div>
+              <p className={styles.muted}>
+                Occupied
+              </p>
 
-          <h2 className="text-4xl font-bold mt-2">
-            {occupiedSpaces}
-          </h2>
+              <h2
+                className="
+                  text-4xl
+                  font-black
+                  mt-2
+                "
+              >
+                {
+                  occupiedSpaces
+                }
+              </h2>
+            </div>
+
+            <Activity
+              className="
+                text-yellow-500
+              "
+              size={36}
+            />
+          </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
-          <p className="text-zinc-400">
-            Available
-          </p>
+        <div
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-6
+          `}
+        >
+          <div className="flex justify-between">
+            <div>
+              <p className={styles.muted}>
+                Available
+              </p>
 
-          <h2 className="text-4xl font-bold mt-2">
-            {availableSpaces}
-          </h2>
+              <h2
+                className="
+                  text-4xl
+                  font-black
+                  mt-2
+                "
+              >
+                {
+                  availableSpaces
+                }
+              </h2>
+            </div>
+
+            <Building2
+              className="
+                text-green-500
+              "
+              size={36}
+            />
+          </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
-          <p className="text-zinc-400">
-            Total Capacity
-          </p>
+        <div
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-6
+          `}
+        >
+          <div className="flex justify-between">
+            <div>
+              <p className={styles.muted}>
+                Outside
+              </p>
 
-          <h2 className="text-4xl font-bold mt-2">
-            {totalCapacity}
-          </h2>
+              <h2
+                className="
+                  text-4xl
+                  font-black
+                  mt-2
+                "
+              >
+                {outsideCount}
+              </h2>
+            </div>
+
+            <CarFront
+              className="
+                text-orange-500
+              "
+              size={36}
+            />
+          </div>
         </div>
-
       </div>
 
       {/* OCCUPANCY BAR */}
 
       <div
-        className="
-        bg-zinc-900
-        border
-        border-zinc-800
-        rounded-3xl
-        p-5
-        mb-8
-      "
+        className={`
+          ${styles.card}
+          border
+          rounded-3xl
+          p-6
+        `}
       >
-
-        <div className="flex justify-between mb-2">
-          <span>Occupancy</span>
-
+        <div
+          className="
+            flex
+            justify-between
+            mb-3
+          "
+        >
           <span>
-            {occupancyPercentage}%
+            Occupancy
+          </span>
+
+          <span
+            className="
+              font-bold
+              text-red-500
+            "
+          >
+            {
+              occupancyPercentage
+            }
+            %
           </span>
         </div>
 
-        <div className="h-4 bg-zinc-800 rounded-full overflow-hidden">
-
+        <div
+          className={`
+            h-4
+            rounded-full
+            overflow-hidden
+            ${
+              theme === "dark"
+                ? "bg-zinc-800"
+                : "bg-zinc-200"
+            }
+          `}
+        >
           <div
             className="
-            h-full
-            bg-red-500
-            rounded-full
-          "
+              h-full
+              bg-red-500
+              rounded-full
+            "
             style={{
               width: `${occupancyPercentage}%`,
             }}
           />
-
         </div>
-
       </div>
 
-      {/* OUTSIDE AREA */}
+      {/* OUTSIDE */}
 
-      <div className="flex justify-center mb-6">
+      <div className="flex justify-center">
 
         <div
-          className="
-          bg-orange-500/10
-          border
-          border-orange-500/40
-          rounded-3xl
-          px-10
-          py-5
-          text-center
-        "
+          className={`
+            ${styles.outside}
+            border
+            rounded-3xl
+            px-12
+            py-6
+            text-center
+          `}
         >
           <h2
             className="
-            text-xl
-            font-bold
-            text-orange-400
-          "
+              text-xl
+              font-bold
+            "
           >
             OUTSIDE PARKING
           </h2>
 
-          <p className="text-zinc-400 mt-2">
-            Capacity 0 / 4
+          <p className="mt-2">
+            {outsideCount} / 4 Occupied
           </p>
         </div>
 
@@ -393,12 +633,11 @@ function ParkingLayout() {
 
       <div
         className="
-        text-center
-        text-red-500
-        font-bold
-        text-2xl
-        mb-8
-      "
+          text-center
+          text-red-500
+          font-black
+          text-2xl
+        "
       >
         ═══ 🚧 MAIN GATE 🚧 ═══
       </div>
@@ -407,61 +646,78 @@ function ParkingLayout() {
 
       <div
         className="
-        flex
-        justify-center
-        gap-6
-        flex-wrap
-        mb-8
-      "
+          flex
+          justify-center
+          flex-wrap
+          gap-6
+        "
       >
-
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-zinc-500" />
+          <div
+            className="
+              w-4
+              h-4
+              rounded
+              bg-zinc-500
+            "
+          />
           Empty
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-yellow-500" />
+          <div
+            className="
+              w-4
+              h-4
+              rounded
+              bg-yellow-500
+            "
+          />
           Partial
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-red-500" />
+          <div
+            className="
+              w-4
+              h-4
+              rounded
+              bg-red-500
+            "
+          />
           Full
         </div>
-
       </div>
 
-      {/* MOBILE HINT */}
+      {/* MOBILE */}
 
       <div
-        className="
-        md:hidden
-        text-center
-        text-zinc-500
-        mb-4
-      "
+        className={`
+          md:hidden
+          text-center
+          ${styles.muted}
+        `}
       >
-        ← Swipe to view layout →
+        ← Swipe horizontally →
       </div>
 
-      {/* PARKING MAP */}
+      {/* GRID */}
 
       <div className="overflow-x-auto">
 
         <div
           className="
-          min-w-[950px]
-          max-w-7xl
-          mx-auto
-          grid
-        "
+            min-w-[1000px]
+            max-w-7xl
+            mx-auto
+            grid
+          "
           style={{
             gridTemplateColumns:
-              "240px 1fr 240px",
+              "260px 1fr 260px",
 
             gridTemplateRows:
-              "140px 140px 140px 140px 140px 140px",
+              "160px 160px 160px 160px 160px 160px",
 
             gridTemplateAreas: `
               "slot7 openTop slot1"
@@ -473,7 +729,6 @@ function ParkingLayout() {
             `,
           }}
         >
-
           <div style={{ gridArea: "slot7" }}>
             {renderSlot("7", "h-full")}
           </div>
@@ -482,16 +737,14 @@ function ParkingLayout() {
             style={{
               gridArea: "openTop",
             }}
-            className="
-            bg-zinc-800/30
-            border
-            border-zinc-800
-            flex
-            items-center
-            justify-center
-            text-zinc-500
-            font-semibold
-          "
+            className={`
+              ${styles.roadway}
+              border
+              flex
+              items-center
+              justify-center
+              font-bold
+            `}
           >
             ROADWAY
           </div>
@@ -504,20 +757,16 @@ function ParkingLayout() {
             style={{
               gridArea: "siddha",
             }}
-            className="
-            bg-gradient-to-br
-            from-zinc-700
-            to-zinc-900
-            border
-            border-zinc-600
-            flex
-            items-center
-            justify-center
-            text-6xl
-            font-black
-            text-zinc-300
-            tracking-widest
-          "
+            className={`
+              ${styles.building}
+              border
+              flex
+              items-center
+              justify-center
+              text-6xl
+              font-black
+              tracking-widest
+            `}
           >
             SIDDH-A
           </div>
@@ -550,16 +799,14 @@ function ParkingLayout() {
             style={{
               gridArea: "openBottom",
             }}
-            className="
-            bg-zinc-800/30
-            border
-            border-zinc-800
-            flex
-            items-center
-            justify-center
-            text-zinc-500
-            font-semibold
-          "
+            className={`
+              ${styles.roadway}
+              border
+              flex
+              items-center
+              justify-center
+              font-bold
+            `}
           >
             ROADWAY
           </div>

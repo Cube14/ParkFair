@@ -13,13 +13,30 @@ import {
   CalendarDays,
   Activity,
   Trophy,
-  LayoutDashboard,
   Gauge,
+  ArrowRight,
+  Clock3,
+  MapPinned,
+  CarFront,
 } from "lucide-react";
+
+import {
+  useTheme,
+} from "../context/ThemeContext";
+
+import {
+  getThemeClasses,
+} from "../utils/theme";
 
 function Dashboard() {
   const [stats, setStats] =
     useState(null);
+
+  const { theme } =
+    useTheme();
+
+  const styles =
+    getThemeClasses(theme);
 
   useEffect(() => {
     loadDashboard();
@@ -45,8 +62,17 @@ function Dashboard() {
 
   if (!stats) {
     return (
-      <div className="text-xl">
-        Loading Dashboard...
+      <div
+        className={`
+          min-h-[60vh]
+          flex
+          items-center
+          justify-center
+          text-xl
+          ${styles.muted}
+        `}
+      >
+        Loading Command Center...
       </div>
     );
   }
@@ -54,83 +80,176 @@ function Dashboard() {
   return (
     <div className="space-y-10">
 
-      {/* HERO */}
+      {/* HERO SECTION */}
 
       <div
-        className="
-        bg-gradient-to-r
-        from-zinc-900
-        to-black
-        border
-        border-zinc-800
-        rounded-3xl
-        p-8
-      "
+        className={`
+          ${styles.glassCard}
+          border
+          rounded-3xl
+          p-8
+          overflow-hidden
+          relative
+        `}
       >
-        <h1
+        <div
           className="
-          text-5xl
-          font-bold
-          mb-3
-        "
-        >
-          ParkFair
-          Control Center
-        </h1>
+            absolute
+            top-0
+            right-0
+            w-64
+            h-64
+            bg-red-500/10
+            blur-3xl
+            rounded-full
+          "
+        />
 
-        <p className="text-zinc-400">
-          Smart Parking
-          Management Dashboard
-        </p>
-
-        <div className="mt-8">
-
-          <div className="flex justify-between mb-2">
-            <span>
-              Parking Occupancy
-            </span>
-
-            <span>
-              {
-                stats.occupancyPercentage
-              }
-              %
-            </span>
-          </div>
+        <div className="relative z-10">
 
           <div
             className="
-            w-full
-            h-4
-            bg-zinc-800
-            rounded-full
-            overflow-hidden
-          "
-          >
-            <div
-              className="
-              h-full
-              bg-red-500
+              inline-flex
+              items-center
+              gap-2
+              px-4
+              py-2
               rounded-full
+              bg-red-500/10
+              border
+              border-red-500/20
+              text-red-500
+              text-sm
+              font-medium
             "
-              style={{
-                width: `${stats.occupancyPercentage}%`,
-              }}
-            />
+          >
+            <Activity size={16} />
+            PARKFAIR COMMAND CENTER
           </div>
 
-          <p className="text-zinc-500 mt-3">
-            {
-              stats.totalCapacity -
-              stats.availableCapacity
-            }
-            /
-            {
-              stats.totalCapacity
-            }
-            {" "}
-            Spaces Occupied
+          <h1
+            className={`
+              text-5xl
+              lg:text-6xl
+              font-black
+              mt-6
+              ${styles.text}
+            `}
+          >
+            Smart Parking
+            <br />
+            Management
+          </h1>
+
+          <p
+            className={`
+              mt-4
+              max-w-2xl
+              text-lg
+              ${styles.muted}
+            `}
+          >
+            Monitor occupancy,
+            assignments, parking
+            cycles and resident
+            activity from a
+            single command center.
           </p>
+
+          {/* OCCUPANCY */}
+
+          <div className="mt-10">
+
+            <div
+              className="
+                flex
+                justify-between
+                items-center
+                mb-3
+              "
+            >
+              <span
+                className={
+                  styles.muted
+                }
+              >
+                Parking Occupancy
+              </span>
+
+              <span
+                className="
+                  text-red-500
+                  font-bold
+                  text-lg
+                "
+              >
+                {
+                  stats.occupancyPercentage
+                }
+                %
+              </span>
+            </div>
+
+            <div
+              className={`
+                w-full
+                h-4
+                rounded-full
+                overflow-hidden
+                ${
+                  theme === "dark"
+                    ? "bg-zinc-800"
+                    : "bg-zinc-200"
+                }
+              `}
+            >
+              <div
+                className="
+                  h-full
+                  bg-red-500
+                  rounded-full
+                  transition-all
+                  duration-700
+                "
+                style={{
+                  width: `${stats.occupancyPercentage}%`,
+                }}
+              />
+            </div>
+
+            <div
+              className="
+                mt-4
+                flex
+                justify-between
+                items-center
+              "
+            >
+              <span
+                className={
+                  styles.muted
+                }
+              >
+                Occupied Spaces
+              </span>
+
+              <span
+                className="
+                  font-semibold
+                "
+              >
+                {
+                  stats.totalCapacity -
+                  stats.availableCapacity
+                }
+                /
+                {
+                  stats.totalCapacity
+                }
+              </span>
+            </div>
+
+          </div>
 
         </div>
       </div>
@@ -139,11 +258,11 @@ function Dashboard() {
 
       <div
         className="
-        grid
-        md:grid-cols-4
-        xl:grid-cols-4
-        gap-6
-      "
+          grid
+          sm:grid-cols-2
+          xl:grid-cols-4
+          gap-6
+        "
       >
         <StatCard
           title="Flats"
@@ -193,7 +312,7 @@ function Dashboard() {
             stats.insideAssignments
           }
           icon={
-            <Activity />
+            <MapPinned />
           }
           color="red"
         />
@@ -204,7 +323,7 @@ function Dashboard() {
             stats.outsideAssignments
           }
           icon={
-            <Activity />
+            <CarFront />
           }
           color="orange"
         />
@@ -230,220 +349,445 @@ function Dashboard() {
         />
       </div>
 
-      {/* ACTIVE CYCLE + RECENT */}
+      {/* ACTIVE CYCLE + CAPACITY */}
 
       <div
         className="
-        grid
-        lg:grid-cols-2
-        gap-8
-      "
+          grid
+          xl:grid-cols-2
+          gap-8
+        "
       >
 
         {/* ACTIVE CYCLE */}
 
         <div
-          className="
-          bg-zinc-900/70
-          border
-          border-zinc-800
-          rounded-3xl
-          p-8
-        "
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-8
+          `}
         >
-          <h2
+          <div
             className="
-            text-2xl
-            font-bold
-            mb-6
-          "
+              flex
+              items-center
+              gap-3
+              mb-6
+            "
           >
-            Active Cycle
-          </h2>
+            <Clock3
+              className="
+                text-red-500
+              "
+            />
+
+            <h2
+              className="
+                text-2xl
+                font-bold
+              "
+            >
+              Active Cycle
+            </h2>
+          </div>
 
           {stats.activeCycle ? (
             <>
               <h3
                 className="
-                text-4xl
-                font-bold
-                text-red-400
-              "
+                  text-4xl
+                  font-black
+                  text-red-500
+                "
               >
                 {
                   stats.activeCycle
                 }
               </h3>
 
-              <div className="mt-6 space-y-3">
+              <div
+                className="
+                  mt-6
+                  space-y-4
+                "
+              >
+                <div
+                  className="
+                    flex
+                    justify-between
+                  "
+                >
+                  <span
+                    className={
+                      styles.muted
+                    }
+                  >
+                    Status
+                  </span>
 
-                <p>
-                  Status:
-                  {" "}
-                  <span className="text-green-400">
+                  <span
+                    className="
+                      text-green-500
+                      font-semibold
+                    "
+                  >
                     {
                       stats.activeCycleStatus
                     }
                   </span>
-                </p>
+                </div>
 
-                <p>
-                  Assignments:
-                  {" "}
-                  {
-                    stats.activeCycleAssignments
-                  }
-                </p>
+                <div
+                  className="
+                    flex
+                    justify-between
+                  "
+                >
+                  <span
+                    className={
+                      styles.muted
+                    }
+                  >
+                    Assignments
+                  </span>
 
-                <p>
-                  Start:
-                  {" "}
-                  {new Date(
-                    stats.activeCycleStartDate
-                  ).toLocaleDateString()}
-                </p>
+                  <span>
+                    {
+                      stats.activeCycleAssignments
+                    }
+                  </span>
+                </div>
 
-                <p>
-                  End:
-                  {" "}
-                  {new Date(
-                    stats.activeCycleEndDate
-                  ).toLocaleDateString()}
-                </p>
+                <div
+                  className="
+                    flex
+                    justify-between
+                  "
+                >
+                  <span
+                    className={
+                      styles.muted
+                    }
+                  >
+                    Start Date
+                  </span>
 
+                  <span>
+                    {new Date(
+                      stats.activeCycleStartDate
+                    ).toLocaleDateString()}
+                  </span>
+                </div>
+
+                <div
+                  className="
+                    flex
+                    justify-between
+                  "
+                >
+                  <span
+                    className={
+                      styles.muted
+                    }
+                  >
+                    End Date
+                  </span>
+
+                  <span>
+                    {new Date(
+                      stats.activeCycleEndDate
+                    ).toLocaleDateString()}
+                  </span>
+                </div>
               </div>
             </>
           ) : (
             <div>
+
               <h3
                 className="
-                text-3xl
-                font-bold
-                text-yellow-400
-              "
+                  text-3xl
+                  font-bold
+                  text-yellow-500
+                "
               >
                 No Active Cycle
               </h3>
 
-              <p className="text-zinc-500 mt-3">
-                Activate or create
-                a cycle.
+              <p
+                className={`
+                  mt-3
+                  ${styles.muted}
+                `}
+              >
+                Create or activate
+                a parking cycle to
+                begin allocation.
               </p>
+
             </div>
           )}
         </div>
 
-        {/* RECENT ACTIVITY */}
+        {/* CAPACITY OVERVIEW */}
 
         <div
-          className="
-          bg-zinc-900/70
-          border
-          border-zinc-800
-          rounded-3xl
-          p-8
-        "
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-8
+          `}
         >
           <h2
             className="
-            text-2xl
+              text-2xl
+              font-bold
+              mb-8
+            "
+          >
+            Capacity Overview
+          </h2>
+
+          <div
+            className="
+              flex
+              justify-center
+            "
+          >
+            <div
+              className="
+                relative
+                w-56
+                h-56
+                rounded-full
+                flex
+                items-center
+                justify-center
+                border-8
+                border-red-500
+              "
+            >
+              <div
+                className="
+                  text-center
+                "
+              >
+                <div
+                  className="
+                    text-5xl
+                    font-black
+                  "
+                >
+                  {
+                    stats.occupancyPercentage
+                  }
+                  %
+                </div>
+
+                <div
+                  className={
+                    styles.muted
+                  }
+                >
+                  Occupied
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="
+              mt-8
+              grid
+              grid-cols-2
+              gap-4
+            "
+          >
+            <div
+              className="
+                text-center
+              "
+            >
+              <div
+                className="
+                  text-3xl
+                  font-bold
+                "
+              >
+                {
+                  stats.availableCapacity
+                }
+              </div>
+
+              <div
+                className={
+                  styles.muted
+                }
+              >
+                Available
+              </div>
+            </div>
+
+            <div
+              className="
+                text-center
+              "
+            >
+              <div
+                className="
+                  text-3xl
+                  font-bold
+                "
+              >
+                {
+                  stats.totalCapacity
+                }
+              </div>
+
+              <div
+                className={
+                  styles.muted
+                }
+              >
+                Capacity
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* RECENT ACTIVITY */}
+
+      <div
+        className={`
+          ${styles.card}
+          border
+          rounded-3xl
+          p-8
+        `}
+      >
+        <h2
+          className="
+            text-3xl
             font-bold
             mb-6
           "
-          >
-            Recent Activity
-          </h2>
+        >
+          Recent Activity
+        </h2>
 
-          <div className="space-y-4">
+        <div className="space-y-4">
 
-            {stats.recentAssignments
-              ?.length > 0 ? (
-              stats.recentAssignments.map(
-                (
-                  item
-                ) => (
-                  <div
-                    key={
-                      item._id
-                    }
-                    className="
-                    bg-zinc-800/60
-                    rounded-xl
+          {stats.recentAssignments
+            ?.length > 0 ? (
+            stats.recentAssignments.map(
+              (item) => (
+                <div
+                  key={item._id}
+                  className={`
+                    ${styles.glassCard}
+                    border
+                    rounded-2xl
                     p-4
-                  "
-                  >
-                    Flat{" "}
-                    {
-                      item.flatId
-                        ?.flatNumber
-                    }
-                    {" "}
-                    →
-                    Slot{" "}
-                    {
-                      item.slotId
-                        ?.slotNumber
-                    }
-
+                    flex
+                    justify-between
+                    items-center
+                  `}
+                >
+                  <div>
                     <div
                       className="
-                      text-zinc-500
-                      text-sm
-                      mt-1
-                    "
+                        font-semibold
+                      "
+                    >
+                      Flat{" "}
+                      {
+                        item.flatId
+                          ?.flatNumber
+                      }
+                      {" "}
+                      assigned
+                      to Slot{" "}
+                      {
+                        item.slotId
+                          ?.slotNumber
+                      }
+                    </div>
+
+                    <div
+                      className={`
+                        text-sm
+                        mt-1
+                        ${styles.muted}
+                      `}
                     >
                       {
                         item.parkingType
                       }
                     </div>
                   </div>
-                )
+
+                  <ArrowRight
+                    size={18}
+                    className="
+                      text-red-500
+                    "
+                  />
+                </div>
               )
-            ) : (
-              <p className="text-zinc-500">
-                No activity found.
-              </p>
-            )}
+            )
+          ) : (
+            <p
+              className={
+                styles.muted
+              }
+            >
+              No recent activity.
+            </p>
+          )}
 
-          </div>
         </div>
-
       </div>
 
-      {/* QUICK ACTIONS */}
+      {/* QUICK COMMANDS */}
 
       <div>
 
         <h2
           className="
-          text-3xl
-          font-bold
-          mb-6
-        "
+            text-3xl
+            font-bold
+            mb-6
+          "
         >
           Quick Commands
         </h2>
 
         <div
           className="
-          grid
-          md:grid-cols-2
-          xl:grid-cols-4
-          gap-6
-        "
+            grid
+            md:grid-cols-2
+            xl:grid-cols-4
+            gap-6
+          "
         >
 
           <Link to="/cycles">
             <div
-              className="
-              bg-zinc-900
-              border
-              border-zinc-800
-              rounded-3xl
-              p-6
-              hover:border-red-500
-              transition
-            "
+              className={`
+                ${styles.card}
+                border
+                rounded-3xl
+                p-6
+                hover:border-red-500
+                transition-all
+                duration-300
+                hover:-translate-y-1
+              `}
             >
               Create Cycle
             </div>
@@ -451,15 +795,16 @@ function Dashboard() {
 
           <Link to="/vehicles">
             <div
-              className="
-              bg-zinc-900
-              border
-              border-zinc-800
-              rounded-3xl
-              p-6
-              hover:border-red-500
-              transition
-            "
+              className={`
+                ${styles.card}
+                border
+                rounded-3xl
+                p-6
+                hover:border-red-500
+                transition-all
+                duration-300
+                hover:-translate-y-1
+              `}
             >
               Add Vehicle
             </div>
@@ -467,15 +812,16 @@ function Dashboard() {
 
           <Link to="/flats">
             <div
-              className="
-              bg-zinc-900
-              border
-              border-zinc-800
-              rounded-3xl
-              p-6
-              hover:border-red-500
-              transition
-            "
+              className={`
+                ${styles.card}
+                border
+                rounded-3xl
+                p-6
+                hover:border-red-500
+                transition-all
+                duration-300
+                hover:-translate-y-1
+              `}
             >
               Add Flat
             </div>
@@ -483,15 +829,16 @@ function Dashboard() {
 
           <Link to="/assignments">
             <div
-              className="
-              bg-zinc-900
-              border
-              border-zinc-800
-              rounded-3xl
-              p-6
-              hover:border-red-500
-              transition
-            "
+              className={`
+                ${styles.card}
+                border
+                rounded-3xl
+                p-6
+                hover:border-red-500
+                transition-all
+                duration-300
+                hover:-translate-y-1
+              `}
             >
               Manage Assignments
             </div>

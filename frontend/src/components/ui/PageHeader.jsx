@@ -1,26 +1,41 @@
+import {
+  useTheme,
+} from "../../context/ThemeContext";
+
+import {
+  getThemeClasses,
+} from "../../utils/theme";
+
 function PageHeader({
   title,
   subtitle,
 }) {
+  const { theme } =
+    useTheme();
+
+  const styles =
+    getThemeClasses(theme);
+
   return (
     <div className="mb-10">
 
       <h1
-        className="
-        text-4xl
-        md:text-5xl
-        font-bold
-      "
+        className={`
+          text-4xl
+          md:text-5xl
+          font-bold
+          ${styles.text}
+        `}
       >
         {title}
       </h1>
 
       {subtitle && (
         <p
-          className="
-          text-zinc-400
-          mt-2
-        "
+          className={`
+            mt-2
+            ${styles.muted}
+          `}
         >
           {subtitle}
         </p>
