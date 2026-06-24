@@ -10,6 +10,7 @@ const cycleSummaryRoutes = require("./routes/cycleSummaryRoutes");
 const parkingAssignmentRoutes = require("./routes/parkingAssignmentRoutes");
 const cycleMatrixRoutes = require("./routes/cycleMatrixRoutes");
 const layoutRoutes = require("./routes/layoutRoutes");
+const cloneCycleRoutes = require("./routes/cloneCycleRoutes");
 const allocationRoutes = require(
   "./routes/allocationRoutes"
 );
@@ -31,6 +32,7 @@ app.use("/api/cycles", cycleMatrixRoutes);
 app.use("/api/slots", parkingSlotRoutes);
 app.use("/api/allocations", allocationRoutes);
 app.use("/api/cycles", cycleSummaryRoutes);
+app.use("/api/cycles", cloneCycleRoutes);
 // Root Route
 app.get("/", (req, res) => {
   res.status(200).json({
