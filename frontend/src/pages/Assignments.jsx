@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import toast from "react-hot-toast";
@@ -6,6 +7,23 @@ import PageHeader from "../components/ui/PageHeader";
 import ActionButton from "../components/ui/ActionButton";
 import Modal from "../components/ui/Modal";
 import StatusBadge from "../components/ui/StatusBadge";
+
+import {
+  ClipboardList,
+  Search,
+  CarFront,
+  ParkingSquare,
+  Building2,
+  CircleDot,
+} from "lucide-react";
+
+import {
+  useTheme,
+} from "../context/ThemeContext";
+
+import {
+  getThemeClasses,
+} from "../utils/theme";
 
 function Assignments() {
   const [assignments, setAssignments] =
@@ -46,6 +64,12 @@ function Assignments() {
       parkingType: "INSIDE",
     });
 
+  const { theme } =
+    useTheme();
+
+  const styles =
+    getThemeClasses(theme);
+
   useEffect(() => {
     loadAssignments();
     loadCycles();
@@ -53,17 +77,25 @@ function Assignments() {
     loadFlats();
     loadVehicles();
   }, []);
-const handleFlatChange = (flatId) => {
-  const vehicle = vehicles.find(
-    (v) => v.flatId?._id === flatId
-  );
 
-  setFormData((prev) => ({
-    ...prev,
-    flatId,
-    vehicleId: vehicle?._id || "",
-  }));
-};
+  const handleFlatChange = (
+    flatId
+  ) => {
+    const vehicle =
+      vehicles.find(
+        (v) =>
+          v.flatId?._id ===
+          flatId
+      );
+
+    setFormData((prev) => ({
+      ...prev,
+      flatId,
+      vehicleId:
+        vehicle?._id || "",
+    }));
+  };
+
   const loadAssignments =
     async () => {
       try {
@@ -89,7 +121,9 @@ const handleFlatChange = (flatId) => {
       const res =
         await api.get("/cycles");
 
-      setCycles(res.data.data);
+      setCycles(
+        res.data.data
+      );
     } catch {}
   };
 
@@ -98,7 +132,9 @@ const handleFlatChange = (flatId) => {
       const res =
         await api.get("/slots");
 
-      setSlots(res.data.data);
+      setSlots(
+        res.data.data
+      );
     } catch {}
   };
 
@@ -223,7 +259,7 @@ const handleFlatChange = (flatId) => {
         );
 
         loadAssignments();
-      } catch (error) {
+      } catch {
         toast.error(
           "Delete Failed"
         );
@@ -249,7 +285,7 @@ const handleFlatChange = (flatId) => {
         );
 
         loadAssignments();
-      } catch (error) {
+      } catch {
         toast.error(
           "Reset Failed"
         );
@@ -281,49 +317,320 @@ const handleFlatChange = (flatId) => {
           )
     );
 
+  const totalAssignments =
+    assignments.length;
+
+  const insideAssignments =
+    assignments.filter(
+      (a) =>
+        a.parkingType ===
+        "INSIDE"
+    ).length;
+
+  const outsideAssignments =
+    assignments.filter(
+      (a) =>
+        a.parkingType ===
+        "OUTSIDE"
+    ).length;
+
+  const activeAssignments =
+    assignments.filter(
+      (a) =>
+        a.assignmentStatus ===
+        "ACTIVE"
+    ).length;
+
   if (loading) {
     return (
-      <div>
+      <div
+        className="
+          min-h-[60vh]
+          flex
+          items-center
+          justify-center
+          text-xl
+        "
+      >
         Loading Assignments...
       </div>
     );
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Assignments"
-        subtitle="Manage Parking Assignments"
-      />
+    <div className="space-y-8">
+
+      {/* HERO */}
+
+      <div
+        className={`
+          ${styles.glassCard}
+          border
+          rounded-3xl
+          p-8
+          relative
+          overflow-hidden
+        `}
+      >
+        <div
+          className="
+            absolute
+            top-0
+            right-0
+            w-72
+            h-72
+            bg-red-500/10
+            blur-3xl
+            rounded-full
+          "
+        />
+
+        <div className="relative z-10">
+
+          <div
+            className="
+              inline-flex
+              items-center
+              gap-2
+              px-4
+              py-2
+              rounded-full
+              bg-red-500/10
+              border
+              border-red-500/20
+              text-red-500
+              text-sm
+            "
+          >
+            <ClipboardList
+              size={16}
+            />
+            ASSIGNMENT CONTROL
+          </div>
+
+          <h1
+            className={`
+              text-5xl
+              lg:text-6xl
+              font-black
+              mt-6
+              ${styles.text}
+            `}
+          >
+            Parking
+            <br />
+            Assignments
+          </h1>
+
+          <p
+            className={`
+              mt-4
+              text-lg
+              ${styles.muted}
+            `}
+          >
+            Manage cycle
+            allocations, slot
+            occupancy and
+            vehicle placement.
+          </p>
+
+        </div>
+      </div>
+
+      {/* STATS */}
+
+      <div
+        className="
+          grid
+          md:grid-cols-2
+          xl:grid-cols-4
+          gap-6
+        "
+      >
+
+        <div
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-6
+          `}
+        >
+          <div className="flex justify-between">
+            <div>
+              <p className={styles.muted}>
+                Total Assignments
+              </p>
+
+              <h2
+                className="
+                  text-4xl
+                  font-black
+                  mt-2
+                "
+              >
+                {totalAssignments}
+              </h2>
+            </div>
+
+            <ClipboardList
+              className="
+                text-red-500
+              "
+              size={36}
+            />
+          </div>
+        </div>
+
+        <div
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-6
+          `}
+        >
+          <div className="flex justify-between">
+            <div>
+              <p className={styles.muted}>
+                Active
+              </p>
+
+              <h2
+                className="
+                  text-4xl
+                  font-black
+                  mt-2
+                "
+              >
+                {activeAssignments}
+              </h2>
+            </div>
+
+            <CircleDot
+              className="
+                text-green-500
+              "
+              size={36}
+            />
+          </div>
+        </div>
+
+        <div
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-6
+          `}
+        >
+          <div className="flex justify-between">
+            <div>
+              <p className={styles.muted}>
+                Inside Parking
+              </p>
+
+              <h2
+                className="
+                  text-4xl
+                  font-black
+                  mt-2
+                "
+              >
+                {insideAssignments}
+              </h2>
+            </div>
+
+            <ParkingSquare
+              className="
+                text-blue-500
+              "
+              size={36}
+            />
+          </div>
+        </div>
+
+        <div
+          className={`
+            ${styles.card}
+            border
+            rounded-3xl
+            p-6
+          `}
+        >
+          <div className="flex justify-between">
+            <div>
+              <p className={styles.muted}>
+                Outside Parking
+              </p>
+
+              <h2
+                className="
+                  text-4xl
+                  font-black
+                  mt-2
+                "
+              >
+                {outsideAssignments}
+              </h2>
+            </div>
+
+            <CarFront
+              className="
+                text-orange-500
+              "
+              size={36}
+            />
+          </div>
+        </div>
+
+      </div>
+
+      {/* SEARCH + ACTIONS */}
 
       <div
         className="
           flex
           flex-col
-          md:flex-row
+          lg:flex-row
           gap-4
-          mb-8
         "
       >
-        <input
-          type="text"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) =>
-            setSearch(
-              e.target.value
-            )
-          }
-          className="
-            flex-1
-            bg-zinc-900
-            border
-            border-zinc-800
-            rounded-xl
-            px-4
-            py-3
-          "
-        />
+        <div className="relative flex-1">
+
+          <Search
+            size={18}
+            className="
+              absolute
+              left-4
+              top-1/2
+              -translate-y-1/2
+              text-zinc-500
+            "
+          />
+
+          <input
+            type="text"
+            placeholder="Search assignment..."
+            value={search}
+            onChange={(e) =>
+              setSearch(
+                e.target.value
+              )
+            }
+            className={`
+              ${styles.input}
+              w-full
+              border
+              rounded-2xl
+              pl-12
+              pr-4
+              py-3
+            `}
+          />
+
+        </div>
 
         <ActionButton
           onClick={
@@ -341,79 +648,33 @@ const handleFlatChange = (flatId) => {
         >
           Reset All
         </ActionButton>
+
       </div>
 
+      {/* DESKTOP TABLE */}
+
       <div
-        className="
-          overflow-x-auto
-          bg-zinc-900/80
+        className={`
+          hidden
+          lg:block
+          ${styles.table}
           border
-          border-zinc-800
           rounded-3xl
-        "
+          overflow-hidden
+        `}
       >
-            <div className="grid md:grid-cols-4 gap-4 mb-8">
-  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-    <p className="text-zinc-400 text-sm">
-      Assignments
-    </p>
-    <h2 className="text-3xl font-bold">
-      {assignments.length}
-    </h2>
-  </div>
-
-  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-    <p className="text-zinc-400 text-sm">
-      Inside
-    </p>
-    <h2 className="text-3xl font-bold">
-      {
-        assignments.filter(
-          (a) => a.parkingType === "INSIDE"
-        ).length
-      }
-    </h2>
-  </div>
-
-  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-    <p className="text-zinc-400 text-sm">
-      Outside
-    </p>
-    <h2 className="text-3xl font-bold">
-      {
-        assignments.filter(
-          (a) => a.parkingType === "OUTSIDE"
-        ).length
-      }
-    </h2>
-  </div>
-
-  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-    <p className="text-zinc-400 text-sm">
-      Active
-    </p>
-    <h2 className="text-3xl font-bold">
-      {
-        assignments.filter(
-          (a) =>
-            a.assignmentStatus ===
-            "ACTIVE"
-        ).length
-      }
-    </h2>
-  </div>
-</div>
-
-
         <table className="w-full">
+
           <thead>
-            <tr className="border-b border-zinc-800">
+
+            <tr
+              className={`
+                border-b
+                ${styles.tableRow}
+              `}
+            >
               <th className="p-4 text-left">
                 Cycle
-              </th>
-
-              <th className="p-4 text-left">
-                Slot
               </th>
 
               <th className="p-4 text-left">
@@ -425,9 +686,14 @@ const handleFlatChange = (flatId) => {
               </th>
 
               <th className="p-4 text-left">
+                Slot
+              </th>
+
+              <th className="p-4 text-left">
                 Type
               </th>
-            <th className="p-4 text-left">
+
+              <th className="p-4 text-left">
                 Status
               </th>
 
@@ -435,16 +701,23 @@ const handleFlatChange = (flatId) => {
                 Actions
               </th>
             </tr>
+
           </thead>
 
           <tbody>
+
             {filteredAssignments.map(
-              (assignment) => (
+              (
+                assignment
+              ) => (
                 <tr
                   key={
                     assignment._id
                   }
-                  className="border-b border-zinc-800"
+                  className={`
+                    border-b
+                    ${styles.tableRow}
+                  `}
                 >
                   <td className="p-4">
                     {
@@ -454,15 +727,7 @@ const handleFlatChange = (flatId) => {
                     }
                   </td>
 
-                  <td className="p-4">
-                    {
-                      assignment
-                        .slotId
-                        ?.slotNumber
-                    }
-                  </td>
-
-                  <td className="p-4">
+                  <td className="p-4 font-bold">
                     {
                       assignment
                         .flatId
@@ -479,45 +744,215 @@ const handleFlatChange = (flatId) => {
                   </td>
 
                   <td className="p-4">
+                    Slot{" "}
                     {
-                      assignment.parkingType
+                      assignment
+                        .slotId
+                        ?.slotNumber
                     }
                   </td>
-                    <td className="p-4">
-  <StatusBadge
-    status={
-      assignment.assignmentStatus
-    }
-  />
-</td>
-                  <td className="p-4 flex gap-2">
-                    <ActionButton
-                      variant="secondary"
-                      onClick={() =>
-                        openEditModal(
-                          assignment
-                        )
-                      }
-                    >
-                      Edit
-                    </ActionButton>
 
-                    <ActionButton
-                      variant="danger"
-                      onClick={() =>
-                        deleteAssignment(
-                          assignment._id
-                        )
+                  <td className="p-4">
+                    <span
+                      className={
+                        assignment.parkingType ===
+                        "INSIDE"
+                          ? `
+                            px-3
+                            py-1
+                            rounded-full
+                            bg-green-500/10
+                            text-green-500
+                            text-sm
+                          `
+                          : `
+                            px-3
+                            py-1
+                            rounded-full
+                            bg-orange-500/10
+                            text-orange-500
+                            text-sm
+                          `
                       }
                     >
-                      Delete
-                    </ActionButton>
+                      {
+                        assignment.parkingType
+                      }
+                    </span>
                   </td>
+
+                  <td className="p-4">
+                    <StatusBadge
+                      status={
+                        assignment.assignmentStatus
+                      }
+                    />
+                  </td>
+
+                  <td className="p-4">
+                    <div className="flex gap-2">
+
+                      <ActionButton
+                        variant="secondary"
+                        onClick={() =>
+                          openEditModal(
+                            assignment
+                          )
+                        }
+                      >
+                        Edit
+                      </ActionButton>
+
+                      <ActionButton
+                        variant="danger"
+                        onClick={() =>
+                          deleteAssignment(
+                            assignment._id
+                          )
+                        }
+                      >
+                        Delete
+                      </ActionButton>
+
+                    </div>
+                  </td>
+
                 </tr>
               )
             )}
+
           </tbody>
+
         </table>
+      </div>
+
+      {/* MOBILE CARDS */}
+
+      <div
+        className="
+          lg:hidden
+          grid
+          gap-4
+        "
+      >
+        {filteredAssignments.map(
+          (
+            assignment
+          ) => (
+            <div
+              key={
+                assignment._id
+              }
+              className={`
+                ${styles.card}
+                border
+                rounded-3xl
+                p-5
+              `}
+            >
+              <div className="flex justify-between">
+
+                <div>
+
+                  <h3
+                    className="
+                      text-2xl
+                      font-black
+                    "
+                  >
+                    Flat{" "}
+                    {
+                      assignment
+                        .flatId
+                        ?.flatNumber
+                    }
+                  </h3>
+
+                  <p
+                    className={
+                      styles.muted
+                    }
+                  >
+                    {
+                      assignment
+                        .cycleId
+                        ?.cycleName
+                    }
+                  </p>
+
+                </div>
+
+                <StatusBadge
+                  status={
+                    assignment.assignmentStatus
+                  }
+                />
+
+              </div>
+
+              <div className="mt-4 space-y-2">
+
+                <div>
+                  Vehicle :
+                  {" "}
+                  {
+                    assignment
+                      .vehicleId
+                      ?.vehicleNumber
+                  }
+                </div>
+
+                <div>
+                  Slot :
+                  {" "}
+                  {
+                    assignment
+                      .slotId
+                      ?.slotNumber
+                  }
+                </div>
+
+                <div>
+                  Type :
+                  {" "}
+                  {
+                    assignment.parkingType
+                  }
+                </div>
+
+              </div>
+
+              <div className="flex gap-2 mt-5">
+
+                <ActionButton
+                  variant="secondary"
+                  onClick={() =>
+                    openEditModal(
+                      assignment
+                    )
+                  }
+                  className="flex-1"
+                >
+                  Edit
+                </ActionButton>
+
+                <ActionButton
+                  variant="danger"
+                  onClick={() =>
+                    deleteAssignment(
+                      assignment._id
+                    )
+                  }
+                  className="flex-1"
+                >
+                  Delete
+                </ActionButton>
+
+              </div>
+
+            </div>
+          )
+        )}
       </div>
 
       <Modal
@@ -533,114 +968,125 @@ const handleFlatChange = (flatId) => {
       >
         <div className="space-y-4">
 
-          {!editingAssignment && (
-            <>
-              <select
-                value={
-                  formData.cycleId
-                }
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cycleId:
-                      e.target.value,
-                  })
-                }
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3"
-              >
-                <option value="">
-                  Select Cycle
+
+          <select
+            value={
+              formData.cycleId
+            }
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                cycleId:
+                  e.target.value,
+              })
+            }
+            className={`
+              ${styles.input}
+              w-full
+              border
+              rounded-xl
+              px-4
+              py-3
+            `}
+          >
+            <option value="">
+              Select Cycle
+            </option>
+
+            {cycles.map(
+              (cycle) => (
+                <option
+                  key={cycle._id}
+                  value={cycle._id}
+                >
+                  {
+                    cycle.cycleName
+                  }
                 </option>
+              )
+            )}
+          </select>
 
-                {cycles.map(
-                  (cycle) => (
-                    <option
-                      key={
-                        cycle._id
-                      }
-                      value={
-                        cycle._id
-                      }
-                    >
-                      {
-                        cycle.cycleName
-                      }
-                    </option>
-                  )
-                )}
-              </select>
+          <select
+            value={
+              formData.flatId
+            }
+            onChange={(e) =>
+              handleFlatChange(
+                e.target.value
+              )
+            }
+            className={`
+              ${styles.input}
+              w-full
+              border
+              rounded-xl
+              px-4
+              py-3
+            `}
+          >
+            <option value="">
+              Select Flat
+            </option>
 
-              <select
-                value={
-                  formData.flatId
-                }
-                onChange={(e) =>
-  handleFlatChange(
-    e.target.value
-  )
-}
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3"
-              >
-                <option value="">
-                  Select Flat
+            {flats.map(
+              (flat) => (
+                <option
+                  key={flat._id}
+                  value={flat._id}
+                >
+                  Flat{" "}
+                  {
+                    flat.flatNumber
+                  }
                 </option>
+              )
+            )}
+          </select>
 
-                {flats.map(
-                  (flat) => (
-                    <option
-                      key={
-                        flat._id
-                      }
-                      value={
-                        flat._id
-                      }
-                    >
-                      {
-                        flat.flatNumber
-                      }
-                    </option>
-                  )
-                )}
-              </select>
+          <select
+            value={
+              formData.vehicleId
+            }
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                vehicleId:
+                  e.target.value,
+              })
+            }
+            className={`
+              ${styles.input}
+              w-full
+              border
+              rounded-xl
+              px-4
+              py-3
+            `}
+          >
+            <option value="">
+              Select Vehicle
+            </option>
 
-              <select
-                value={
-                  formData.vehicleId
-                }
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    vehicleId:
-                      e.target.value,
-                  })
-                }
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3"
-              >
-                <option value="">
-                  Select Vehicle
+            {vehicles.map(
+              (
+                vehicle
+              ) => (
+                <option
+                  key={
+                    vehicle._id
+                  }
+                  value={
+                    vehicle._id
+                  }
+                >
+                  {
+                    vehicle.vehicleNumber
+                  }
                 </option>
-
-                {vehicles.map(
-                  (
-                    vehicle
-                  ) => (
-                    <option
-                      key={
-                        vehicle._id
-                      }
-                      value={
-                        vehicle._id
-                      }
-                    >
-                      {
-                        vehicle.vehicleNumber
-                      }
-                    </option>
-                  )
-                )}
-              </select>
-            </>
-          )}
+              )
+            )}
+          </select>
 
           <select
             value={
@@ -653,7 +1099,14 @@ const handleFlatChange = (flatId) => {
                   e.target.value,
               })
             }
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3"
+            className={`
+              ${styles.input}
+              w-full
+              border
+              rounded-xl
+              px-4
+              py-3
+            `}
           >
             <option value="">
               Select Slot
@@ -662,28 +1115,55 @@ const handleFlatChange = (flatId) => {
             {slots.map(
               (slot) => (
                 <option
-                  key={
-                    slot._id
-                  }
-                  value={
-                    slot._id
-                  }
+                  key={slot._id}
+                  value={slot._id}
                 >
                   Slot{" "}
-{
-  slot.slotNumber
-}
-(
-{
-  slot.maxCapacity
-}
-)
+                  {
+                    slot.slotNumber
+                  }
                 </option>
               )
             )}
           </select>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <select
+            value={
+              formData.parkingType
+            }
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                parkingType:
+                  e.target.value,
+              })
+            }
+            className={`
+              ${styles.input}
+              w-full
+              border
+              rounded-xl
+              px-4
+              py-3
+            `}
+          >
+            <option value="INSIDE">
+              INSIDE
+            </option>
+
+            <option value="OUTSIDE">
+              OUTSIDE
+            </option>
+          </select>
+
+          <div
+            className="
+              flex
+              justify-end
+              gap-3
+              pt-4
+            "
+          >
             <ActionButton
               variant="secondary"
               onClick={() =>
@@ -701,15 +1181,18 @@ const handleFlatChange = (flatId) => {
               }
             >
               {editingAssignment
-                ? "Update"
-                : "Create"}
+                ? "Update Assignment"
+                : "Create Assignment"}
             </ActionButton>
+
           </div>
 
         </div>
       </Modal>
+
     </div>
   );
 }
 
 export default Assignments;
+	
