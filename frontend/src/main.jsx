@@ -8,6 +8,7 @@ import { Toaster } from "react-hot-toast";
 
 import { CycleProvider } from "./context/CycleContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext";
 
 ReactDOM.createRoot(
   document.getElementById("root")
@@ -16,24 +17,28 @@ ReactDOM.createRoot(
 
     <ThemeProvider>
 
-      <CycleProvider>
+      <AuthProvider>
 
-        <App />
+        <CycleProvider>
 
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
+          <App />
 
-            style: {
-              background: "#18181b",
-              color: "#ffffff",
-              border: "1px solid #3f3f46",
-            },
-          }}
-        />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
 
-      </CycleProvider>
+              style: {
+                background: "#18181b",
+                color: "#ffffff",
+                border: "1px solid #3f3f46",
+              },
+            }}
+          />
+
+        </CycleProvider>
+
+      </AuthProvider>
 
     </ThemeProvider>
 

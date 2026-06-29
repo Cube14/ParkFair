@@ -11,7 +11,9 @@ const parkingAssignmentRoutes = require("./routes/parkingAssignmentRoutes");
 const cycleMatrixRoutes = require("./routes/cycleMatrixRoutes");
 const layoutRoutes = require("./routes/layoutRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const authRoutes = require("./routes/authRoutes");
 const cloneCycleRoutes = require("./routes/cloneCycleRoutes");
+const residentRoutes = require("./routes/residentRoutes");
 const allocationRoutes = require(
   "./routes/allocationRoutes"
 );
@@ -23,18 +25,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/flats", flatRoutes);
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/layouts", layoutRoutes);
 app.use("/api/cycles", parkingCycleRoutes);
 app.use("/api/assignments", parkingAssignmentRoutes);
+app.use("/api/resident", residentRoutes);
 app.use("/api/cycles", cycleMatrixRoutes);
 app.use("/api/slots", parkingSlotRoutes);
 app.use("/api/allocations", allocationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/cycles", cycleSummaryRoutes);
 app.use("/api/cycles", cloneCycleRoutes);
+
+
 // Root Route
 app.get("/", (req, res) => {
   res.status(200).json({

@@ -1,7 +1,8 @@
 const Flat = require("../models/Flat");
-const ParkingAssignment = require(
-  "../models/ParkingAssignment"
-);
+const User = require("../models/User");
+const Vehicle = require("../models/Vehicle");
+const ParkingAssignment = require("../models/ParkingAssignment");
+
 /*
 |--------------------------------------------------------------------------
 | Get All Flats
@@ -10,9 +11,39 @@ const ParkingAssignment = require(
 
 const getAllFlats = async (req, res) => {
   try {
-    const flats = await Flat.find();
+    const flats = await Flat.find().lean();
 
-    res.status(200).json(flats);
+    const users = await User.find().lean();
+
+    const vehicles = await Vehicle.find().lean();
+
+    const result = flats.map((flat) => {
+      const user = users.find(
+        (u) =>
+          u.flatId &&
+          u.flatId.toString() === flat._id.toString()
+      );
+
+      const vehicleCount = vehicles.filter(
+        (v) =>
+          v.flatId &&
+          v.flatId.toString() === flat._id.toString()
+      ).length;
+
+      return {
+        ...flat,
+
+        vehicleCount,
+
+        account: {
+          exists: !!user,
+          userId: user?._id || null,
+          isActive: user?.isActive || false,
+        },
+      };
+    });
+
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -30,16 +61,18 @@ const getAllFlats = async (req, res) => {
 const createFlat = async (req, res) => {
   try {
     const { flatNumber, ownerName } = req.body;
+
     const existingFlat = await Flat.findOne({
-         flatNumber,
+      flatNumber,
     });
 
     if (existingFlat) {
-        return res.status(400).json({
-            success: false,
-            message: "Flat already exists",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Flat already exists",
+      });
     }
+
     const flat = await Flat.create({
       flatNumber,
       ownerName,
@@ -57,15 +90,15 @@ const createFlat = async (req, res) => {
   }
 };
 
-const getFlatHistory = async (
-  req,
-  res
-) => {
+/*
+|--------------------------------------------------------------------------
+| Get Flat History
+|--------------------------------------------------------------------------
+*/
+
+const getFlatHistory = async (req, res) => {
   try {
-    const flat =
-      await Flat.findById(
-        req.params.flatId
-      );
+    const flat = await Flat.findById(req.params.flatId);
 
     if (!flat) {
       return res.status(404).json({
@@ -74,42 +107,31 @@ const getFlatHistory = async (
       });
     }
 
-    const history =
-      await ParkingAssignment.find({
-        flatId: flat._id,
-      })
-        .populate(
-          "cycleId",
-          "cycleName"
-        )
-        .populate(
-          "slotId",
-          "slotNumber"
-        )
-        .sort({
-          createdAt: 1,
-        });
+    const history = await ParkingAssignment.find({
+      flatId: flat._id,
+    })
+      .populate("cycleId", "cycleName")
+      .populate("slotId", "slotNumber")
+      .sort({
+        createdAt: 1,
+      });
 
-    const formattedHistory =
-      history.map((item) => ({
-        cycle:
-          item.cycleId?.cycleName ||
-          "Unknown",
-        slot:
-          item.slotId?.slotNumber ||
-          "Unknown",
-        parkingType:
-          item.parkingType,
-        status:
-          item.assignmentStatus,
-      }));
+    const formattedHistory = history.map((item) => ({
+      cycle:
+        item.cycleId?.cycleName || "Unknown",
+
+      slot:
+        item.slotId?.slotNumber || "Unknown",
+
+      parkingType: item.parkingType,
+
+      status: item.assignmentStatus,
+    }));
 
     res.status(200).json({
       success: true,
-      flatNumber:
-        flat.flatNumber,
-      history:
-        formattedHistory,
+      flatNumber: flat.flatNumber,
+      history: formattedHistory,
     });
   } catch (error) {
     res.status(500).json({
@@ -119,16 +141,23 @@ const getFlatHistory = async (
   }
 };
 
+/*
+|--------------------------------------------------------------------------
+| Update Flat
+|--------------------------------------------------------------------------
+*/
+
 const updateFlat = async (req, res) => {
   try {
-    const flat = await Flat.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const flat =
+      await Flat.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
 
     if (!flat) {
       return res.status(404).json({
@@ -148,6 +177,12 @@ const updateFlat = async (req, res) => {
     });
   }
 };
+
+/*
+|--------------------------------------------------------------------------
+| Delete Flat
+|--------------------------------------------------------------------------
+*/
 
 const deleteFlat = async (req, res) => {
   try {
