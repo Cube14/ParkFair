@@ -3,7 +3,7 @@ node_modules/
 
 dist/
 build/
-
+src/sessions/
 coverage/
 
 .vscode/settings.json

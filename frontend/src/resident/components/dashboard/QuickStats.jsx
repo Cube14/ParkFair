@@ -16,41 +16,56 @@ console.log("Resolved Lottie", Lottie);
 console.log(typeof Lottie);
 
 console.log(Lottie);
+
+
+function QuickStats({ data }) {
+const parking = data?.parking;
+const cycle = data?.cycle;
+
+const inside =
+  parking?.status === "INSIDE";
+
 const stats = [
   {
     title: "Fairness Credits",
-    value: "128",
+    value: "0",
     icon: Trophy,
     color: "text-amber-400",
     glow: "shadow-amber-500/20",
   },
 
   {
-    title: "Rotation Rank",
-    value: "#4",
+    title: "Current Cycle",
+    value: cycle?.name || "--",
     icon: TrendingUp,
     color: "text-red-400",
     glow: "shadow-red-500/20",
   },
 
   {
-    title: "Inside Days",
-    value: "72",
+    title: "Days Remaining",
+    value:
+      cycle?.remainingDays != null
+        ? `${cycle.remainingDays}`
+        : "--",
     icon: Clock3,
     color: "text-emerald-400",
     glow: "shadow-emerald-500/20",
   },
 
   {
-    title: "Priority Score",
-    value: "98%",
+    title: "Parking Status",
+    value:
+      parking?.status || "--",
     icon: ShieldCheck,
-    color: "text-sky-400",
-    glow: "shadow-sky-500/20",
+    color: inside
+      ? "text-emerald-400"
+      : "text-amber-400",
+    glow: inside
+      ? "shadow-emerald-500/20"
+      : "shadow-amber-500/20",
   },
-];
-
-function QuickStats() {
+];  
   return (
     <section
       className="
@@ -110,8 +125,11 @@ function QuickStats() {
 
                   backdrop-blur-3xl
 
+                  h-60
+                  felx
+                  flex-col
+                  justify-btween
                   p-6
-
                   shadow-[0_0_40px_rgba(255,255,255,0.02)]
                 "
               >
@@ -230,9 +248,11 @@ function QuickStats() {
                     className="
                       mt-6
 
-                      text-4xl
-                      md:text-5xl
-
+                      text-3xl
+                      md:text-4xl
+                      xl:text-5xl
+                      Leading-tight
+                      break-words
                       font-black
 
                       tracking-tight
@@ -270,7 +290,7 @@ function QuickStats() {
                         text-zinc-500
                       "
                     >
-                      Live System Data
+                      Live Resident Data
                     </span>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 
 bcrypt.hash(
-    "AlucarD$@20005",
+    "Akshita@2009",
     10
 ).then(console.log);
