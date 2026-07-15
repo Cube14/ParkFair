@@ -1,5 +1,4 @@
-// ANALYTICS.JSX
-// PART 1 / 4
+
 
 import {
   useEffect,
@@ -300,8 +299,7 @@ function Analytics() {
           styles={styles}
         />
       </div>
-      // ANALYTICS.JSX
-// PART 2 / 4
+
 
       {/* OCCUPANCY OVERVIEW */}
 
@@ -586,8 +584,7 @@ function Analytics() {
           </div>
         </div>
       </div>
-      // ANALYTICS.JSX
-// PART 3 / 4
+
 
       {/* SLOT UTILIZATION */}
 

@@ -11,3 +11,5 @@ coverage/
 .DS_Store
 
 *.log
+# WhatsApp Session
+backend/src/sessions/

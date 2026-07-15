@@ -56,7 +56,7 @@ exports.sendSingleResident =
 
       const activeCycle =
         await ParkingCycle.findOne({
-          status: "ACTIVE",
+          status: "PLANNED",
         });
 
       if (!activeCycle) {
@@ -144,7 +144,9 @@ exports.sendSingleResident =
 
 Dear *${flat.ownerName}*,
 
-This is a reminder of your parking allocation for the current parking cycle.
+Your parking allocation for the upcoming parking cycle is as follows.
+
+Please park your vehicle in the assigned location starting from 16 Jul 2026.
 
 ━━━━━━━━━━━━━━━━━━
 

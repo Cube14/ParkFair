@@ -41,11 +41,7 @@ const flatSchema = new mongoose.Schema(
       default: false,
     },
 
-    role: {
-      type: String,
-      enum: ["RESIDENT", "ADMIN", "SUPER_ADMIN"],
-      default: "RESIDENT",
-    },
+    
 
     isActive: {
       type: Boolean,

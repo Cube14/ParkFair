@@ -12,9 +12,10 @@ async function sendActiveCycleNotifications() {
 
   const activeCycle =
     await ParkingCycle.findOne({
-      status: "ACTIVE",
+      status: "PLANNED",
     });
-
+  console.log("USING CYCLE:");
+  console.log(activeCycle);
   if (!activeCycle) {
     throw new Error(
       "No active parking cycle found."
@@ -26,6 +27,7 @@ async function sendActiveCycleNotifications() {
   // ============================
 
   const assignments =
+    
     await ParkingAssignment.find({
       cycleId: activeCycle._id,
       assignmentStatus: "ACTIVE",
@@ -33,7 +35,13 @@ async function sendActiveCycleNotifications() {
       .populate("flatId")
       .populate("vehicleId")
       .populate("slotId");
+  console.log(
+    `Assignments found: ${assignments.length}`
+    );
 
+  console.log(
+    assignments.map(a => a.flatId.flatNumber)
+    );
   if (!assignments.length) {
     throw new Error(
       "No parking assignments found."
@@ -123,7 +131,9 @@ async function sendActiveCycleNotifications() {
 
 Dear *${flat.ownerName}*,
 
-This is a reminder of your parking allocation for the current parking cycle.
+Your parking allocation for the upcoming parking cycle is as follows.
+
+Please park your vehicle in the assigned location starting from tomorrow (16 Jul 2026).
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -255,9 +265,10 @@ Have a wonderful day. 😊`;
 async function previewActiveCycleNotifications() {
   const activeCycle =
     await ParkingCycle.findOne({
-      status: "ACTIVE",
+      status: "PLANNED",
     });
-
+  console.log("USING CYCLE:");
+  console.log(activeCycle);
   if (!activeCycle) {
     throw new Error(
       "No active parking cycle found."
@@ -308,7 +319,9 @@ async function previewActiveCycleNotifications() {
 
 Dear *${flat.ownerName}*,
 
-Your parking allocation for the current parking cycle is as follows.
+Your parking allocation for the upcoming parking cycle is as follows.
+
+Please park your vehicle in the assigned location starting from tomorrow (16 Jul 2026).
 
 ━━━━━━━━━━━━━━━━━━
 

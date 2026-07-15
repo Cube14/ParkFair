@@ -126,7 +126,7 @@ const stats = [
                   backdrop-blur-3xl
 
                   h-60
-                  felx
+                  flex
                   flex-col
                   justify-btween
                   p-6

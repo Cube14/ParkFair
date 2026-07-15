@@ -20,6 +20,9 @@ const allocationRoutes = require(
 const app = express();
 const notificationRoutes =
 require("./routes/notificationRoutes");
+const notificationRoutes =
+require("./routes/notificationRoutes");
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -40,6 +43,11 @@ app.use("/api/allocations", allocationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/cycles", cycleSummaryRoutes);
 app.use("/api/cycles", cloneCycleRoutes);
+app.use(
+  "/api/notifications",
+  notificationRoutes
+);
+
 app.use(
   "/api/notifications",
   notificationRoutes
