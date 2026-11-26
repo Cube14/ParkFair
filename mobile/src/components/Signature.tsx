@@ -19,7 +19,9 @@ export function StudioButton({ title, onPress, bright = false }: { title:string;
   })}><Text style={{color:bright ? c.paper : c.signal, fontWeight:'700',fontSize:14}}>{title}</Text></Pressable>;
 }
 
-export function SignatureShell({ children, tabbed = false, title }: { children: ReactNode; tabbed?: boolean; title:string }) {
+export function SignatureShell({ children, tabbed = false, title, scrollEnabled = true }: {
+  children: ReactNode; tabbed?: boolean; title:string; scrollEnabled?: boolean;
+}) {
   const c = useSignaturePalette();
   const { isDark, setAppearance } = useTheme();
   const { toggle } = useDesignPreview();
@@ -27,14 +29,14 @@ export function SignatureShell({ children, tabbed = false, title }: { children: 
     <View style={[styles.masthead,{borderColor:c.line}]}>
       <View style={styles.brand}>
         <View style={[styles.mark,{backgroundColor:c.ink}]}><TabGlyph name="parking" color={c.paper}/></View>
-        <Text style={{color:c.ink,letterSpacing:3,fontSize:15,fontWeight:'800'}}>PARKFAIR</Text>
+        <Text style={{color:c.ink,fontFamily:'serif',fontSize:24,letterSpacing:-0.6}}>ParkFair</Text>
       </View>
       <View style={styles.actions}>
         <StudioButton title={isDark ? 'Light' : 'Dark'} onPress={()=>setAppearance(isDark ? 'Light' : 'Dark')}/>
         <StudioButton title="Exit preview" onPress={toggle}/>
       </View>
     </View>
-    <ScrollView keyboardShouldPersistTaps="handled" accessibilityLabel={title}
+    <ScrollView keyboardShouldPersistTaps="handled" accessibilityLabel={title} scrollEnabled={scrollEnabled}
       contentContainerStyle={{paddingBottom:18, width:'100%', maxWidth:760, alignSelf:'center'}}>{children}</ScrollView>
   </SafeAreaView>;
 }
@@ -87,7 +89,7 @@ export function SignatureHome({ current,next,notice,loading,upcomingStatus,onGar
       <Text style={[styles.sceneLabel,{color:c.signal}]}>RESIDENT PARKING</Text>
       <Text accessibilityRole="header" style={[styles.sceneTitle,{color:c.ink}]}>Motor Court</Text>
     </View>
-    <VehiclePortrait height={218} />
+    <VehiclePortrait />
     <View style={[styles.ledger,{alignItems:'center',backgroundColor:c.panel,borderColor:c.line}]}>
       <View style={{flex:1,gap:5}}>
         <Text style={[styles.sceneLabel,{color:c.signal}]}>CURRENT PARKING</Text>
@@ -105,7 +107,7 @@ export function SignatureHome({ current,next,notice,loading,upcomingStatus,onGar
         <Text style={{color:c.ink,fontWeight:'600'}}>{next?.description ?? upcomingStatus}</Text>
         {!!next?.dates && <Text style={{color:c.muted}}>{next.dates}</Text>}
       </View>
-      {!!next && <Text style={{fontSize:32,fontWeight:'300',color:c.ink}}>{next.bay}</Text>}
+      {!!next && <Text style={{fontFamily:'serif',fontSize:32,color:c.ink}}>{next.bay}</Text>}
     </View>
     <View style={[styles.actions,{paddingHorizontal:8}]}>
       <StudioButton title="Enter private garage  ↗" onPress={onGarage}/>
@@ -150,9 +152,9 @@ export function SignaturePlan({ onReturn }: { onReturn:()=>void }) {
   </SignatureShell>;
 }
 
-export function VehiclePortrait({height}: {height:number}) {
+export function VehiclePortrait() {
   const c = useSignaturePalette();
-  return <View style={{height,backgroundColor:c.plate}}>
+  return <View style={{width:'100%',aspectRatio:1080 / 608,backgroundColor:c.plate}}>
     <Image source={require('../../assets/garage-preview.jpg')} resizeMode="contain"
       accessibilityLabel="Illustrative architectural garage photograph" style={{width:'100%',height:'100%'}}/>
   </View>;
@@ -213,8 +215,8 @@ const styles = StyleSheet.create({
   actions:{flexDirection:'row',flexWrap:'wrap'},
   sceneTop:{alignSelf:'flex-start',paddingHorizontal:18,paddingVertical:12,marginTop:17},
   sceneLabel:{fontWeight:'800',fontSize:10,letterSpacing:2.4},
-  sceneTitle:{fontSize:32,fontWeight:'600',letterSpacing:-.9},
+  sceneTitle:{fontFamily:'serif',fontSize:36,letterSpacing:-1.5},
   sceneBottom:{marginTop:'auto',padding:16,alignItems:'stretch'},
-  bay:{fontSize:44,fontWeight:'300',letterSpacing:-3},
+  bay:{fontFamily:'serif',fontSize:44,letterSpacing:-1.5},
   ledger:{padding:16,gap:8,flexDirection:'row',alignItems:'center',borderBottomWidth:1},
 });
