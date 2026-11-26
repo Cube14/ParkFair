@@ -72,8 +72,8 @@ export function createParkingClient(request: Request) {
     publish: (id: string, revision: number, key: string) =>
       mutate<{ publication: { _id: string; cycleId: string; sequence: number }; replayed: boolean }>(
         base(id) + '/publish', { revision }, 'POST', { 'Idempotency-Key': key }),
-    activate: (cycleId: string, publicationId?: string) => mutate('/cycles/' + segment(cycleId) + '/status',
-      { status: 'ACTIVE', ...(publicationId && { publicationId }) }, 'PUT'),
+    activate: (cycleId: string, publicationId: string) => mutate('/cycles/' + segment(cycleId) + '/status',
+      { status: 'ACTIVE', publicationId }, 'PUT'),
     scheduleActivation: (cycleId: string, publicationId: string, approved: true) =>
       mutate<{ schedule: Schedule }>('/cycles/' + segment(cycleId) + '/activation-schedules', { publicationId, approved }),
     schedules: (cycleId: string) => request<{ schedules: Schedule[] }>('/cycles/' + segment(cycleId) + '/activation-schedules'),

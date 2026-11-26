@@ -1,4 +1,5 @@
-import { createContext, type ReactNode, useContext, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import { useColorScheme } from 'react-native';
 
 const base = { spacing: { compact: 8, item: 16, section: 24, page: 22 }, radius: 10 };
@@ -14,7 +15,14 @@ const light = {
 type Appearance = 'System' | 'Light' | 'Dark';
 const AppearanceContext = createContext({ appearance: 'System' as Appearance, setAppearance: (_value: Appearance) => {} });
 export function AppearanceProvider({ children }: { children: ReactNode }) {
-  const [appearance, setAppearance] = useState<Appearance>('System');
+  const [appearance, update] = useState<Appearance>('System');
+  useEffect(() => { void SecureStore.getItemAsync('parkfair.appearance').then(value => {
+    if (value === 'Dark' || value === 'Light') update(value);
+  }).catch(() => {}); }, []);
+  function setAppearance(value: Appearance) {
+    update(value);
+    void SecureStore.setItemAsync('parkfair.appearance', value).catch(() => {});
+  }
   return <AppearanceContext.Provider value={{ appearance, setAppearance }}>{children}</AppearanceContext.Provider>;
 }
 export function useTheme() {

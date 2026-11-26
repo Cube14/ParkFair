@@ -28,6 +28,7 @@ type SessionContextValue = {
   parking: () => ReturnType<typeof createParkingClient>;
   readCachedParking: (account: string) => ReturnType<typeof offlineParking.read>;
   invalidateParking: () => Promise<void>;
+  request: <T>(path: string, options?: ApiOptions) => Promise<T>;
   read: <T>(path: string, signal: AbortSignal) => Promise<T>;
 };
 
@@ -153,7 +154,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SessionContext.Provider value={{ session, restoring, restoreError, retryRestore, signIn, signOut, read, parking: () => createParkingClient(request),
+    <SessionContext.Provider value={{ session, restoring, restoreError, retryRestore, signIn, signOut, read, request, parking: () => createParkingClient(request),
         readCachedParking: offlineParking.read, invalidateParking }}>
       {children}
     </SessionContext.Provider>

@@ -27,18 +27,19 @@ export function Copy({ children, error = false }: { children: ReactNode; error?:
   );
 }
 
-export function Action({ label, onPress, disabled = false }: {
-  label: string; onPress: () => void; disabled?: boolean;
+export function Action({ label, onPress, disabled = false, tone = 'secondary' }: {
+  label: string; onPress: () => void; disabled?: boolean; tone?: 'primary' | 'secondary' | 'quiet';
 }) {
   const { colors } = useTheme();
   return (
     <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
       style={({ pressed }) => ({
-        backgroundColor: colors.action, opacity: pressed || disabled ? 0.78 : 1,
+        backgroundColor: tone === 'primary' ? colors.action : tone === 'quiet' ? 'transparent' : colors.surface,
+        opacity: disabled ? 0.48 : pressed ? 0.78 : 1,
         minHeight: 48, justifyContent: 'center', alignItems: 'center',
         borderRadius: colors.radius, padding: colors.spacing.compact,
       })}>
-      <Text style={{ color: colors.actionText, fontSize: 16, fontWeight: '700' }}>{label}</Text>
+      <Text style={{ color: tone === 'primary' ? colors.actionText : colors.text, fontSize: 16, fontWeight: '700' }}>{label}</Text>
     </Pressable>
   );
 }

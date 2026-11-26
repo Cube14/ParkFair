@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
@@ -25,6 +26,7 @@ function Field({ label, value, set }: { label: string; value: string; set: (valu
 }
 
 export default function Dossier() {
+  const router = useRouter();
   const { session, parking, read, signOut } = useSession();
   const { colors } = useTheme();
   const client = parking();
@@ -44,6 +46,14 @@ export default function Dossier() {
   const [drawer, setDrawer] = useState(false);
   const [filter, setFilter] = useState('');
   const [row, setRow] = useState<Row>(blank);
+  const [picker, setPicker] = useState<'flatNumber' | 'vehicleNumber' | 'slotNumber'>();
+  const [term, setTerm] = useState('');
+  const inventory = useQuery({
+    queryKey: ['allocation-admin', session?.user.id, 'registered-options', picker],
+    enabled: !!picker && drawer,
+    queryFn: ({signal}) => read<{data: (Row & {isActive?: boolean; flatId?: {flatNumber:string}})[]}>(
+      picker === 'flatNumber' ? '/flats' : picker === 'vehicleNumber' ? '/vehicles' : '/slots', signal),
+  });
   const [index, setIndex] = useState<number | null>(null);
   const [exclusion, setExclusion] = useState({ flatNumber: '', reason: '' });
   const [creatingCycle, setCreatingCycle] = useState(false);
@@ -132,6 +142,7 @@ export default function Dossier() {
   const act = (label: string, press: () => void, disallowed = false) =>
     <Action label={label} onPress={press} disabled={busy || disallowed} />;
   return <Screen title="Allocation dossier">
+    {act('Parking office', () => router.replace('/occupancy'))}
     <View accessibilityLabel={'Stage ' + (stage + 1) + ' of ' + steps.length + ', ' + steps[stage]}
       accessible style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {steps.map((step, i) => <Text key={step} style={{
@@ -248,9 +259,8 @@ export default function Dossier() {
       }), draft.draft.status !== 'APPROVED' || conflict)}
       {publication && <>
         <Copy>Published · version {publication.sequence}</Copy>
-        {act('Activate manually', () => confirm('Activate this cycle?', 'The server checks the current publication, inventory and date window.', async () => {
-
-
+        {act('Activate manually', () => confirm('Activate publication ' + publication.sequence + '?',
+          'Use this published chart for ' + cycle.cycleName + '. The server checks inventory and dates.', async () => {
           await client.activate(cycle._id, publication._id);
           setNotice('Cycle activated.');
         }), conflict)}
@@ -285,6 +295,11 @@ export default function Dossier() {
       {act('Back to publication', () => setStage(3))}
     </>}
     {draft && act('Open chart drawer', () => { setFilter(''); setDrawer(true); })}
+    {draft && act('View draft activity', () => run(async () => {
+      const activity = await read<{ events: { action: string; createdAt: string }[] }>('/allocation-drafts/audit/' + id, new AbortController().signal);
+      Alert.alert('Draft activity', activity.events.slice(0, 6).map(event =>
+        event.action.replace(/_/g, ' ').toLowerCase() + ' · ' + new Date(event.createdAt).toLocaleString()).join('\n') || 'No events.');
+    }))}
     {cycle && act('Choose another cycle', () => {
       setCycle(undefined); setDraft(undefined); setPublication(undefined); setPreview(undefined); setFile(undefined);
       setScheduled(undefined); setStage(0); setError(''); setConflict(false); setNotice('');
@@ -304,6 +319,19 @@ export default function Dossier() {
           {act('Add manual row', () => { setRow(blank); setIndex(-1); }, !editable || conflict)}
           {act('Close chart', () => setDrawer(false))}
         </> : <>
+          {(['flatNumber','slotNumber','vehicleNumber'] as const).map(field =>
+            <Action key={field} label={'Choose registered ' + fields[field].toLowerCase()} onPress={() => { setPicker(field); setTerm(''); }} />)}
+          {picker && <>
+            <Field label="Filter registered values" value={term} set={setTerm} />
+            {inventory.isError && act('Retry inventory', () => { void inventory.refetch(); })}
+            {inventory.data?.data.filter(item => item.isActive !== false && item[picker]?.toLowerCase().includes(term.toLowerCase())
+              && (picker !== 'vehicleNumber' || !row.flatNumber || item.flatId?.flatNumber === row.flatNumber)).map(item =>
+              <Action key={item[picker]} label={item[picker]!} onPress={() => {
+                setRow({ ...row, [picker]: item[picker], ...(picker === 'flatNumber' && {vehicleNumber: ''}) });
+                setPicker(undefined);
+              }} />)}
+            {act('Close choices', () => setPicker(undefined))}
+          </>}
           {(Object.keys(fields) as (keyof Row)[]).map(field =>
             <Field key={field} label={fields[field]} value={row[field] ?? ''} set={value => setRow({ ...row, [field]: value })} />)}
           {act('Save correction', saveRow, conflict || !row.flatNumber.trim() || !row.slotNumber.trim())}

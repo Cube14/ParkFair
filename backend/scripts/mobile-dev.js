@@ -26,29 +26,35 @@ const Slot = require("../src/models/ParkingSlot");
 const tls = { key: readFileSync(keyPath), cert: readFileSync(certPath), minVersion: "TLSv1.2" };
 
 async function start() {
-  const database = "parkfair_dev_mobile_" + randomBytes(8).toString("hex");
+  const resume = process.env.PARKFAIR_MOBILE_FIXTURE;
+  if (resume && !/^parkfair_dev_mobile_[a-f0-9]{16}$/.test(resume)) throw new Error("Invalid fixture database.");
+  const database = resume || "parkfair_dev_mobile_" + randomBytes(8).toString("hex");
   await mongoose.connect("mongodb://127.0.0.1:" + mongoPort + "/" + database + "?directConnection=true");
   const hello = await mongoose.connection.db.command({ hello: 1 });
   if (hello.setName !== "parkfair-dev" || !hello.isWritablePrimary) throw new Error("Use the isolated ParkFair development replica set.");
   await Promise.all(Object.values(mongoose.models).map(model => model.init()));
+  const password = resume ? null : randomBytes(18).toString("base64url");
+  if (resume) {
+    if (!await User.exists({ username: "mobile-admin", role: "ADMIN" })) throw new Error("Saved fixture unavailable.");
+  } else {
   const [one, two] = await Flat.create([{ flatNumber: "001" }, { flatNumber: "002" }]);
   await Vehicle.create([{ flatId: one.id, vehicleNumber: "FIX-A" }, { flatId: two.id, vehicleNumber: "FIX-B" }]);
   await Slot.create([
     { slotNumber: "A-12", side: "A", maxCapacity: 1, displayOrder: 1 },
     { slotNumber: "C-03", side: "OUTSIDE", maxCapacity: 2, displayOrder: 2 },
   ]);
-  const password = randomBytes(18).toString("base64url");
   const hash = await bcrypt.hash(password, 10);
   await User.create([
     { username: "mobile-admin", role: "ADMIN", password: hash },
     { username: "mobile-resident", flatId: one.id, password: hash },
     { username: "mobile-other", flatId: two.id, password: hash },
   ]);
+  }
   const server = createServer(tls, app);
   server.on("error", async error => { console.error(error.code); process.exitCode = 1; await mongoose.disconnect(); });
   server.listen(5443, bind, () => {
     console.log("Synthetic API at https://" + bind + ":5443/api");
-    console.log("Accounts: mobile-admin, mobile-resident, mobile-other. Temporary password: " + password);
+    if (password) console.log("Accounts: mobile-admin, mobile-resident, mobile-other. Temporary password: " + password);
   });
   for (const signal of ["SIGINT", "SIGTERM"]) {
     process.once(signal, () => server.close(() => void mongoose.disconnect()));

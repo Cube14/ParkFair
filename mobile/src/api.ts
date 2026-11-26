@@ -75,6 +75,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     const message = response.status >= 500 ? undefined : result?.message;
     throw new ApiError(response.status, typeof message === 'string' ? message : 'ParkFair could not complete the request.');
   }
+  if (path === '/flats' && !options.method && Array.isArray(result)) return { data: result } as T;
   if (!result || result.success !== true) throw new ApiError(response.status, 'ParkFair returned an unexpected response.');
   return result as T;
 }

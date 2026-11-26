@@ -170,12 +170,13 @@ function Cycles() {
     };
 
   const activateCycle =
-    async (cycleId) => {
+    async (cycle) => {
+      if (!cycle.latestPublicationId || !window.confirm(`Activate publication ${cycle.publicationSequence} for ${cycle.cycleName}?`)) return;
       try {
         await api.put(
-          `/cycles/${cycleId}/status`,
+          `/cycles/${cycle._id}/status`,
           {
-            status: "ACTIVE",
+            status: "ACTIVE", publicationId: cycle.latestPublicationId,
           }
         );
 
@@ -688,12 +689,11 @@ const deleteCycle =
               "
             >
 
-              {cycle.status ===
-                "PLANNED" && (
+              {cycle.status === "PLANNED" && cycle.latestPublicationId && (
                 <ActionButton
                   onClick={() =>
                     activateCycle(
-                      cycle._id
+                      cycle
                     )
                   }
                 >

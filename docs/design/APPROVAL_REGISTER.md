@@ -14,3 +14,5 @@ Phase 4A v1 records the selected R1 + R3 and A1 directions. Final screens, mater
 Phase 4B approval covers Motor Court's vehicle-led composition, Loggia's immediate allocation hierarchy, R1's pearl, travertine and warm-neutral materials, R3's private-garage and vehicle styling, and matching light and dark appearances. Administrator approval covers the five-stage A1 Review Dossier, on-demand chart and focused correction sheet. These choices are implemented in the native shell.
 
 The final checkpoint covers type, artwork, 3D vehicle, environment, motion and haptics. The native garage uses a reduced-size temporary derivative of the generated R3 still. The production art and model remain pending review. [Phase 4B checkpoint](phase-4/FINAL_CHECKPOINT.md)
+
+Phase 5 supersedes Phase 4B as a visual review baseline after the owner rejected the earlier interface. Office navigation, schedule hierarchy, tab icons and device settings are available for native review. Final layout, typography, motion, vehicle and environment remain pending. [Android captures and acceptance](phase-5/ACCEPTANCE.md)

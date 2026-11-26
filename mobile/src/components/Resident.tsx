@@ -13,8 +13,12 @@ const dates = (start: string, end: string) => [start, end].map(date => new Date(
 const bay = (slot: string | null, type: string) => slot || (type === 'OUTSIDE' ? 'Outdoor parking' : 'Bay pending');
 
 function AllocationLine({ allocation }: { allocation: Allocation }) {
-  return <Copy>{bay(allocation.parking.slot, allocation.parking.type)} · {allocation.cycle.name}{'\n'}
-    {dates(allocation.cycle.startDate, allocation.cycle.endDate)}</Copy>;
+  const { colors } = useTheme();
+  return <View style={{ backgroundColor: colors.surface, padding: 18, borderLeftWidth: 3, borderColor: colors.action, gap: 5 }}>
+    <Copy>{allocation.cycle.name}</Copy>
+    <Text style={{ color: colors.text, fontFamily: 'serif', fontSize: 30 }}>{bay(allocation.parking.slot, allocation.parking.type)}</Text>
+    <Copy>{dates(allocation.cycle.startDate, allocation.cycle.endDate)}</Copy>
+  </View>;
 }
 
 function useResidentQuery<T>(path: string, enabled = true) {
@@ -104,12 +108,12 @@ export function ResidentParking() {
 export function ResidentGarage() {
   const { colors } = useTheme();
   const result = useResidentQuery<ResidentAllocation>('/resident/dashboard');
-  const [expanded, setExpanded] = useState(false);
+
   return <Screen title="Private garage">
     <Image source={require('../../assets/garage-preview.jpg')} accessibilityLabel="Illustrative concept vehicle"
-      resizeMode={expanded ? 'cover' : 'contain'} style={{ width: '100%', height: expanded ? 340 : 225, backgroundColor: colors.surface }} />
-    <Copy>Illustrative vehicle and garage</Copy>
-    <Action label={expanded ? 'Fit image' : 'Expand image'} onPress={() => setExpanded(!expanded)} />
+      resizeMode="cover" style={{ width: '100%', height: 250, backgroundColor: colors.surface }} />
+    <Copy>Garage photograph · static preview</Copy>
+
     <QueryStatus query={result} />
     {result.isSuccess && <Copy>{result.data.vehicle ? 'Registered vehicle · ' + result.data.vehicle.number : 'No registered vehicle shown.'}</Copy>}
   </Screen>;
@@ -131,8 +135,13 @@ export function ResidentSchedule() {
 
 export function ResidentAccount() {
   const { session, parking, signOut } = useSession();
+  let currentId: string | undefined;
+  try {
+    const payload = session?.token.split('.')[1];
+    if (payload) currentId = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))).sid;
+  } catch { /* Only enable remote actions for identifiable sessions. */ }
   const { appearance, setAppearance } = useTheme();
-  const [mode, setMode] = useState<'Account' | 'Inbox' | 'Settings'>('Account');
+  const [mode, setMode] = useState<'Account' | 'Inbox' | 'Settings' | 'Security' | 'Signed-in devices'>('Account');
   const [message, setMessage] = useState('');
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -141,10 +150,13 @@ export function ResidentAccount() {
     return () => subscription.remove();
   }, []);
   const inbox = useResidentQuery<{ events: { _id: string; createdAt: string }[] }>('/resident/inbox', mode === 'Inbox');
-  const sessions = useResidentQuery<{ sessions: { _id: string; client: string; expiresAt: string }[] }>('/auth/sessions', mode === 'Account');
+  const sessions = useResidentQuery<{ sessions: { _id: string; client: string; current?: boolean; lastUsedAt?: string; expiresAt: string }[] }>('/auth/sessions', mode === 'Signed-in devices');
   return <Screen title={mode}>
-    {(['Account', 'Inbox', 'Settings'] as const).filter(item => item !== mode).map(item =>
+    {mode === 'Account' && (['Inbox', 'Settings'] as const).map(item =>
       <Action key={item} label={item} onPress={() => setMode(item)} />)}
+    {mode !== 'Account' && <Action label="Back" onPress={() => setMode(mode === 'Signed-in devices' ? 'Security' : mode === 'Security' ? 'Settings' : 'Account')} />}
+    {mode === 'Settings' && <Action label="Security" onPress={() => setMode('Security')} />}
+    {mode === 'Security' && <Action label="Signed-in devices" onPress={() => setMode('Signed-in devices')} />}
     {message && <Copy>{message}</Copy>}
     {mode === 'Inbox' && <><QueryStatus query={inbox} />
       {inbox.isSuccess && (inbox.data.events.length ? inbox.data.events.map(entry => <Copy key={entry._id}>
@@ -153,16 +165,21 @@ export function ResidentAccount() {
     {mode === 'Settings' && <><Copy>Appearance · {appearance}</Copy>
       {(['System', 'Light', 'Dark'] as const).map(item => <Action key={item} label={item} disabled={item === appearance} onPress={() => setAppearance(item)} />)}
       <Copy>System reduced motion · {reduced ? 'On' : 'Off'}. The garage uses the Eco still preview.</Copy></>}
-    {mode === 'Account' && <>
-      <Copy>{session?.user.username}</Copy><QueryStatus query={sessions} />
+    {mode === 'Account' && <Copy>{session?.user.username}</Copy>}
+    {mode === 'Signed-in devices' && <>
+      <QueryStatus query={sessions} />
       {sessions.isSuccess && sessions.data.sessions.map(entry => <Action key={entry._id}
-        label={'Revoke ' + entry.client + ' session · expires ' + new Date(entry.expiresAt).toLocaleDateString()}
+        disabled={entry.current === true || entry._id === currentId || (entry.current === undefined && !currentId)}
+        label={(entry.current || entry._id === currentId ? 'This device' : entry.client === 'web' ? 'Sign out browser' : 'Sign out mobile device') +
+          (entry.lastUsedAt ? ' · last active ' + new Date(entry.lastUsedAt).toLocaleString() : '')}
         onPress={() => Alert.alert('Revoke session?', 'That installation will need to sign in again.', [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Revoke', style: 'destructive', onPress: () => {
             void parking().revokeSession(entry._id).then(() => sessions.refetch()).catch(() => setMessage('Could not revoke session.'));
           } },
         ])} />)}
+    </>}
+    {mode === 'Account' && <>
       <Action label="Sign out" onPress={() => { void signOut().catch(() => setMessage('Could not clear the saved session.')); }} />
     </>}
   </Screen>;

@@ -74,7 +74,7 @@ exports.logout = async (req, res) => {
 exports.listSessions = async (req, res) => {
   const sessions = await AuthSession.find({ userId: req.user.id, revokedAt: null, expiresAt: { $gt: new Date() } })
     .select("client expiresAt lastUsedAt createdAt").sort({ lastUsedAt: -1 }).limit(100);
-  res.json({ success: true, sessions });
+  res.json({ success: true, sessions: sessions.map(entry => ({ ...entry.toObject(), current: String(entry._id) === String(req.user.sessionId) })) });
 };
 
 exports.revokeSession = async (req, res) => {

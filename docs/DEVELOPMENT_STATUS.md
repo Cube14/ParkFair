@@ -1,5 +1,9 @@
 # Development status
 
+## Phase 5 · usability review
+
+The Android administrator now lands in Parking Office with live occupancy and searchable management directories. Allocation work occupies its own route. The resident uses custom bottom navigation, formatted schedule views, persistent appearance settings and a dedicated signed-in devices screen. The Android acceptance record covers synthetic account and inventory changes, XLSX import, validation and inventory selection. Further native acceptance and the final visual and garage decisions remain open. [Phase 5 Android review](design/phase-5/ACCEPTANCE.md)
+
 ## Phase 4B · native qualification
 
 The API 36 Google APIs x86-64 emulator booted with two cores and 2 GB of requested memory. The development APK installed and launched with the project-scoped CMake workaround. The API 37 Play image's boot failure remains unresolved. The debug APK measured 94,115,694 bytes. ADB reported 3,792 ms for a cold activity launch. A 231-frame navigation sample recorded 43 janky frames, 24 ms median and 44 ms at the 95th percentile. Resident navigation used 315,420 KiB total PSS. These are emulator development-build measurements.
