@@ -1,5 +1,7 @@
 # Security audit
 
+Phase 3 preserves existing authorization and session gates. Mock installation credentials are hashed and unlinked on session revocation. Resident snapshots are account-scoped and expire. Audits reported zero advisories across application packages. Review CSP and staging checks in the [engineering foundation](PHASE_3_ENGINEERING.md#migration-and-delivery).
+
 ## Phase 2 controls
 
 The API uses 15-minute JWTs and rotating, hashed refresh sessions. Replay revokes the whole family, and account revocation and audit writes commit together. Web refresh requires a Secure, HttpOnly, SameSite=Strict cookie, an explicit header and exact approved Origin. The browser keeps new access tokens in memory. Native uses SecureStore, with verification pending on hardware. Uploads have MIME, ZIP, XML and row limits. Immutable placements, transactional writes and explicit activation protect effective resident data. Real sends are disabled at the service boundary and provider dependencies were removed from the API. [Session details](PHASE_2_SESSIONS.md) | [Import and outbox limits](PHASE_2_ALLOCATION.md)

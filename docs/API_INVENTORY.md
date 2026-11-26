@@ -81,3 +81,7 @@ Paths below use the same /api prefix. All draft and publication routes require A
 | `POST /notifications/test`, `/single`, `/send-active` | Always 503 in the Phase 2 API. Preview remains available. |
 
 [Import and publication details](PHASE_2_ALLOCATION.md) | [Session details](PHASE_2_SESSIONS.md)
+
+## Phase 3 additions
+
+See the [coverage, upload mapping, scheduling and mock notification API contracts](PHASE_3_ENGINEERING.md#api-additions).

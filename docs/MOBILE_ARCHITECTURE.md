@@ -1,5 +1,7 @@
 # Mobile architecture
 
+Phase 3 adds typed nonvisual integration, a protected parking snapshot and a renderer evaluation. See the [native setup](PHASE_3_NATIVE.md) and [engineering foundation](PHASE_3_ENGINEERING.md).
+
 Phase 2 uses SecureStore for refresh credentials, rotates them on launch and keeps access tokens in memory. Existing role screens and appearance remain the baseline. On-device auth and secure storage remain unverified. [Session architecture](PHASE_2_SESSIONS.md) | [Design approval register](design/APPROVAL_REGISTER.md)
 
 ## Scaffold in this branch

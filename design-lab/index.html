@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light"><title>ParkFair design laboratory</title>
+<link rel="stylesheet" href="gallery.css"><script defer src="gallery.js"></script></head>
+<body>
+<header class="mast"><a href="#top" class="brand">PARK<span>FAIR</span></a><nav aria-label="Gallery sections"><a href="#resident">Resident</a><a href="#administrator">Administrator</a><a href="#assets">Assets</a></nav><span class="badge">Owner review</span></header>
+<main id="top">
+<section class="intro">
+  <div><p class="eyebrow">Design laboratory / Phase 3</p><h1>Parking, considered.</h1><p>Three resident directions and two ways to guide an administrator from a parking chart to an effective allocation.</p><a class="button primary" href="#resident">Explore the proposals <span aria-hidden="true">↓</span></a></div>
+  <figure><img src="assets/r1.png" alt="Unbranded silver grand tourer in a sunlit concrete residential garage"><figcaption>Architectural luxury · Generated art study</figcaption></figure>
+</section>
+<section id="resident" class="review">
+  <div class="section-title"><div><p class="eyebrow">Resident mobile</p><h2>Three ways into the garage.</h2></div><p>Synthetic assignments and vehicle imagery</p></div>
+  <div class="resident-grid" id="resident-grid"></div>
+  <section class="inspect" id="resident-inspect" aria-labelledby="inspect-title">
+    <div><p class="eyebrow">Screen library</p><h3 id="inspect-title">Explore a complete resident flow</h3>
+      <div class="toolbar"><label>Direction <select id="inspect-concept"></select></label><label>Appearance <select id="appearance"><option value="dark">Dark</option><option value="light">Light</option></select></label><label><input id="reduce-motion" type="checkbox"> Reduce motion</label></div>
+      <button type="button" id="play-motion" class="button primary">Play transition study</button><p id="motion-note" class="caption">Home → garage → parking → upcoming. The garage study uses image parallax and zoom.</p>
+      <div class="screen-index" id="screen-index" aria-label="Resident screens"></div><p id="screen-caption" class="caption"></p>
+    </div>
+    <div id="resident-phone"></div>
+  </section>
+</section>
+<section id="administrator" class="review">
+  <div class="section-title"><div><p class="eyebrow">Administrator mobile and web</p><h2>Guidance with room to work.</h2></div><p>11 stages · The same allocation workflow in both concepts</p></div>
+  <div class="admin-grid" id="admin-grid"></div>
+</section>
+<section id="assets" class="review">
+ <div class="section-title"><div><p class="eyebrow">Asset and rendering review</p><h2>Material, light and movement.</h2></div></div>
+ <div class="asset-grid">
+  <a href="assets/r1.png"><img src="assets/r1.png" loading="lazy" alt="Travertine and concrete architectural garage study"><strong>Daylight · concrete and stone</strong></a>
+  <a href="assets/r2.png"><img src="assets/r2.png" loading="lazy" alt="Dark coupe in a rain-damp garage by a lit ramp"><strong>Blue hour · stone and reflections</strong></a>
+  <a href="assets/r3.png"><img src="assets/r3.png" loading="lazy" alt="Unbranded luxury fastback under broad ceiling lights"><strong>Private garage · metallic paint and softboxes</strong></a>
+ </div>
+ <p class="caption">These images are visual targets. Open an image for the full-resolution study.</p>
+ <p><a class="button" id="asset-preview-link" href="../docs/design/phase-3/ASSETS_AND_REFERENCES.md">Asset rights and candidate renders</a></p>
+</section>
+</main><footer><span>ParkFair design laboratory</span><a href="#top">Back to top</a></footer>
+</body></html>

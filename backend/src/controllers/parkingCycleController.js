@@ -22,7 +22,7 @@ async function getCycles(req, res) {
   res.json({ success: true, count: data.length, data });
 }
 
-async function activatePublication(cycle, session) {
+async function activatePublication(cycle, session, now) {
   const publication = await AllocationPublication.findOne({
     _id: cycle.latestPublicationId, cycleId: cycle._id,
   }).session(session);
@@ -30,14 +30,13 @@ async function activatePublication(cycle, session) {
     draftId: publication.draftId, revision: publication.revision,
   }).session(session);
   if (!version) throw new ApiError(409, "Published revision is unavailable.");
-  const checked = await assess(cycle, version, session);
+  const checked = await assess(cycle, version, session, now);
   const stored = await ParkingAssignment.find({ publicationId: publication._id }).session(session);
   const signature = (rows) => rows.map(({ flatId, vehicleId, slotId, parkingType }) =>
     [flatId, vehicleId, slotId, parkingType].join(":")).sort().join("|");
   if (checked.issues.length || signature(checked.resolved) !== signature(stored)) {
     throw new ApiError(409, "The published chart no longer matches inventory. Publish a reviewed correction.");
   }
-  const now = new Date();
   if (!cycle.activePublicationId && cycle.status === "ACTIVE") cycle.legacySupersededAt = now;
   cycle.activePublicationId = publication._id;
   if (!publication.activatedAt) {
@@ -46,46 +45,48 @@ async function activatePublication(cycle, session) {
   }
 }
 
+async function setStatusInTransaction(cycleId, status, actorId, session, now = new Date()) {
+  const cycle = await ParkingCycle.findById(cycleId).session(session);
+  if (!cycle) throw new ApiError(404, "Cycle not found.");
+  if (status === "PLANNED" && cycle.status !== "PLANNED") {
+    throw new ApiError(409, "An effective or completed cycle cannot return to planning.");
+  }
+  if (status === "ACTIVE") {
+    const today = societyDay(now);
+    if (cycle.status === "COMPLETED" || cycle.startDate >= dayAfter(today) || cycle.endDate < today) {
+      throw new ApiError(409, "Only an open cycle effective today can be activated.");
+    }
+    if (!cycle.latestPublicationId && cycle.status !== "ACTIVE") {
+      throw new ApiError(409, "Publish an approved allocation before activating this cycle.");
+    }
+    if (await ParkingCycle.exists({
+      _id: { $ne: cycle._id }, status: "ACTIVE",
+      startDate: { $lt: dayAfter(today) }, endDate: { $gte: today },
+    }).session(session)) {
+      throw new ApiError(409, "Another cycle is already effective today.");
+    }
+    await ParkingCycle.updateMany({
+      _id: { $ne: cycle._id }, status: "ACTIVE", endDate: { $lt: today },
+    }, { status: "COMPLETED" }, { session });
+    if (cycle.latestPublicationId && !cycle.activePublicationId?.equals(cycle.latestPublicationId)) {
+      await activatePublication(cycle, session, now);
+    } else if (cycle.status === "ACTIVE") {
+      return cycle;
+    }
+  }
+  if (status !== cycle.status || cycle.isModified("activePublicationId")) {
+    cycle.status = status;
+    await cycle.save({ session });
+    await audit(session, {
+      actorId, action: status === "ACTIVE" ? "CYCLE_ACTIVATED" : "CYCLE_COMPLETED", entityId: cycle._id,
+      revision: cycle.publicationSequence,
+    });
+  }
+  return cycle;
+}
+
 function setStatus(cycleId, status, actorId) {
-  return parkingWrite(async (session) => {
-    const cycle = await ParkingCycle.findById(cycleId).session(session);
-    if (!cycle) throw new ApiError(404, "Cycle not found.");
-    if (status === "PLANNED" && cycle.status !== "PLANNED") {
-      throw new ApiError(409, "An effective or completed cycle cannot return to planning.");
-    }
-    if (status === "ACTIVE") {
-      const today = societyDay();
-      if (cycle.status === "COMPLETED" || cycle.startDate >= dayAfter(today) || cycle.endDate < today) {
-        throw new ApiError(409, "Only an open cycle effective today can be activated.");
-      }
-      if (!cycle.latestPublicationId && cycle.status !== "ACTIVE") {
-        throw new ApiError(409, "Publish an approved allocation before activating this cycle.");
-      }
-      if (await ParkingCycle.exists({
-        _id: { $ne: cycle._id }, status: "ACTIVE",
-        startDate: { $lt: dayAfter(today) }, endDate: { $gte: today },
-      }).session(session)) {
-        throw new ApiError(409, "Another cycle is already effective today.");
-      }
-      await ParkingCycle.updateMany({
-        _id: { $ne: cycle._id }, status: "ACTIVE", endDate: { $lt: today },
-      }, { status: "COMPLETED" }, { session });
-      if (cycle.latestPublicationId && !cycle.activePublicationId?.equals(cycle.latestPublicationId)) {
-        await activatePublication(cycle, session);
-      } else if (cycle.status === "ACTIVE") {
-        return cycle;
-      }
-    }
-    if (status !== cycle.status || cycle.isModified("activePublicationId")) {
-      cycle.status = status;
-      await cycle.save({ session });
-      await audit(session, {
-        actorId, action: status === "ACTIVE" ? "CYCLE_ACTIVATED" : "CYCLE_COMPLETED", entityId: cycle._id,
-        revision: cycle.publicationSequence,
-      });
-    }
-    return cycle;
-  });
+  return parkingWrite((session) => setStatusInTransaction(cycleId, status, actorId, session));
 }
 
 async function updateCycleStatus(req, res) {
@@ -111,4 +112,4 @@ async function deleteCycle(req, res) {
   res.json({ success: true, message: "Cycle deleted" });
 }
 
-module.exports = { createCycle, getCycles, deleteCycle, updateCycleStatus, completeCycle };
+module.exports = { createCycle, getCycles, deleteCycle, updateCycleStatus, completeCycle, setStatusInTransaction };

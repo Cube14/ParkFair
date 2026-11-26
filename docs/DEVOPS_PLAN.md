@@ -1,5 +1,7 @@
 # DevOps plan
 
+Phase 3 adds deterministic activation and mock notification verification, mobile unit tests, and both Android/iOS exports in CI. Review [new additive indexes](PHASE_3_ENGINEERING.md#migration-and-delivery) and [Android development setup](PHASE_3_NATIVE.md) before staging.
+
 For Phase 2, configure exact WEB_ORIGINS for cookie sessions, including Vite proxy use. Use an approved same-site HTTPS origin outside development. The API container no longer contains or initializes a WhatsApp browser runtime. CI enforces web lint, tests the allocation/session workflows and audits all three package trees. Follow the [additive index rollout](PHASE_2_MIGRATION.md) before use in staging or production.
 
 ## Local setup

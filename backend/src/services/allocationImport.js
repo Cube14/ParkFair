@@ -25,7 +25,21 @@ function readCsv(buffer) {
   }
 }
 
-async function parseAllocationFile(buffer, contentType, filename) {
+function requestedMapping(value, columns) {
+  if (value === undefined) return null;
+  let allowed;
+  try { allowed = JSON.parse(value); } catch { throw new ApiError(400, "Invalid column mapping."); }
+  if (!allowed || typeof allowed !== "object" || Array.isArray(allowed) ||
+      Object.keys(allowed).some((key) => !fields.includes(key))) throw new ApiError(400, "Invalid column mapping.");
+  const indices = Object.values(allowed);
+  if (new Set(indices).size !== indices.length ||
+      indices.some((index) => !Number.isInteger(index) || !columns.has(index - 1))) {
+    throw new ApiError(400, "Map each field to a different existing column.");
+  }
+  return new Map(Object.entries(allowed).map(([key, index]) => [key, index - 1]));
+}
+
+async function parseAllocationFile(buffer, contentType, filename, mapping) {
   const type = contentType?.split(";")[0].trim().toLowerCase();
   const extension = typeof filename === "string" ? filename.split(".").at(-1).toLowerCase() : "";
   const isXlsx = extension === "xlsx" && type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -39,12 +53,18 @@ async function parseAllocationFile(buffer, contentType, filename) {
 
   const importIssues = [];
   const rows = [];
-  const columns = new Map();
-  for (const [column, cell] of records[0]?.cells ?? []) {
+  const headerCells = records[0]?.cells ?? new Map();
+  const explicit = requestedMapping(mapping, headerCells);
+  const columns = explicit ?? new Map();
+  const detected = [];
+  for (const [column, cell] of headerCells) {
     if (cell.formula) importIssues.push(issue(1, "headers", "FORMULA_CELL", "Replace the formula with a text header."));
     const key = normalize(cell.value).toLowerCase().replace(/[\s-]+/g, "_");
-    if (!Object.hasOwn(headers, key)) continue;
-    const field = headers[key];
+    const recognized = !cell.formula && Object.hasOwn(headers, key) ? headers[key] : null;
+    detected.push({ column: column + 1, label: cell.formula ? "" : normalize(cell.value).slice(0, 128),
+      recognized, mapped: explicit ? [...explicit].find(([, index]) => index === column)?.[0] ?? null : recognized });
+    if (!recognized || explicit) continue;
+    const field = recognized;
     if (columns.has(field)) importIssues.push(issue(1, field, "DUPLICATE_COLUMN", "Keep only one column for this field."));
     else columns.set(field, column);
   }
@@ -78,7 +98,7 @@ async function parseAllocationFile(buffer, contentType, filename) {
     }
     rows.push(entry);
   }
-  return { source: isXlsx ? "XLSX" : "CSV", rows, importIssues };
+  return { source: isXlsx ? "XLSX" : "CSV", rows, importIssues, columns: detected };
 }
 
 function exportCsv(rows) {

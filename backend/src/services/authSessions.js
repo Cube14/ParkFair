@@ -1,3 +1,4 @@
+const { PushInstallation } = require("../models/PushFoundation");
 const { randomBytes, createHash } = require("node:crypto");
 const jwt = require("jsonwebtoken");
 const { connection } = require("mongoose");
@@ -47,6 +48,7 @@ async function revokeFamily(family, actorId, reason, session) {
   if (family.revokedAt) return;
   family.revokedAt = new Date();
   await family.save({ session });
+  await PushInstallation.deleteMany({ sessionId: family._id }, { session });
   await audit(session, { actorId, entityId: family._id, action: "SESSION_REVOKED", reason });
 }
 
@@ -99,6 +101,7 @@ async function revokeAccount(userId, actorId, session) {
   const result = await AuthSession.updateMany({ userId, revokedAt: null }, {
     $set: { revokedAt: new Date() },
   }, { session });
+  await PushInstallation.deleteMany({ userId }, { session });
   await audit(session, { actorId, entityId: userId, action: "SESSION_REVOKED",
     reason: "ACCOUNT_CHANGED", counts: { sessions: result.modifiedCount } });
 }

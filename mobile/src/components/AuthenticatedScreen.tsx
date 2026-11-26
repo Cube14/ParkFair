@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { ApiError } from '../api';
+import { parkingKeys } from '../parkingClient';
 import { useSession } from '../session';
 import { Action, Copy, Loading, Screen } from './Screen';
 
@@ -10,7 +11,8 @@ export function AuthenticatedScreen<T>({ title, path, children }: {
   const { session, signOut, read } = useSession();
   const [storageError, setStorageError] = useState(false);
   const result = useQuery({
-    queryKey: [session?.user.id, path],
+    queryKey: [...(session?.user.role === 'ADMIN' ? parkingKeys.administration(session.user.id) :
+      parkingKeys.resident(session?.user.id ?? 'signed-out')), path],
     enabled: Boolean(session),
     queryFn: ({ signal }) => read<T>(path, signal),
   });

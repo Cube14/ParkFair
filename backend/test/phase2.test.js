@@ -142,7 +142,7 @@ test("allocation and session HTTP workflows on an isolated replica set", {
     const validation = await action(draftId, "validate", 4);
     const codes = validation.body.issues.map((entry) => entry.code);
     for (const code of ["FORMULA_CELL", "DUPLICATE_FLAT", "SLOT_CAPACITY", "VEHICLE_OWNERSHIP"]) assert.ok(codes.includes(code), code);
-    assert.ok(validation.body.issues.every(({ row, field, message }) => row === 3 && field && message));
+    assert.ok(validation.body.issues.filter(({ row }) => row !== null).every(({ row, field, message }) => row === 3 && field && message));
 
     const missing = await adminCall(path, "POST", {
       raw: Buffer.from("flat_number,notes\n001,example"), ...importParams("missing.csv", 4),

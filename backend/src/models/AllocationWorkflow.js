@@ -10,6 +10,8 @@ const issue = new Schema({
   row: Number, field: String, code: String, message: String,
 }, { _id: false });
 
+const exclusion = new Schema({ flatNumber: String, reason: String }, { _id: false });
+
 const draftSchema = new Schema({
   cycleId: reference("ParkingCycle"),
   revision: { type: Number, required: true },
@@ -30,6 +32,7 @@ const revisionSchema = new Schema({
   source: { type: String, enum: ["MANUAL", "CSV", "XLSX", "LEGACY"], required: true },
   rows: [sourceRow],
   importIssues: [issue],
+  exclusions: [exclusion],
 }, options);
 revisionSchema.index({ draftId: 1, revision: 1 }, { unique: true });
 
@@ -43,6 +46,7 @@ const publicationSchema = new Schema({
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
   rowCount: { type: Number, required: true },
+  exclusions: [exclusion],
   activatedAt: Date,
 }, options);
 publicationSchema.index({ draftId: 1, revision: 1 }, { unique: true });

@@ -21,11 +21,16 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string, options: {
+export type ApiOptions = {
   token?: string;
-  body?: Record<string, string>;
+  body?: Record<string, unknown>;
+  raw?: Blob;
+  headers?: Record<string, string>;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   signal?: AbortSignal;
-} = {}): Promise<T> {
+};
+
+export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const configured = process.env.EXPO_PUBLIC_API_URL;
   let base: URL;
   try {
@@ -47,14 +52,15 @@ export async function api<T>(path: string, options: {
   let result;
   try {
     response = await fetch(base.href.replace(/\/$/, '') + path, {
-      method: options.body ? 'POST' : 'GET',
+      method: options.method ?? (options.body || options.raw ? 'POST' : 'GET'),
       headers: {
         Accept: 'application/json',
-        ...(options.body && { 'X-ParkFair-Session': 'native' }),
+        ...(['/auth/login', '/auth/refresh', '/auth/logout'].includes(path) && { 'X-ParkFair-Session': 'native' }),
         ...(options.body && { 'Content-Type': 'application/json' }),
+        ...options.headers,
         ...(options.token && { Authorization: `Bearer ${options.token}` }),
       },
-      body: options.body && JSON.stringify(options.body),
+      body: options.raw ?? (options.body && JSON.stringify(options.body)),
       signal: controller.signal,
     });
     result = await response.json().catch(() => null);

@@ -1,11 +1,20 @@
 import { useQueryClient } from '@tanstack/react-query';
 import * as SecureStore from 'expo-secure-store';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { api, ApiError, type User } from './api';
+import { createOfflineParking } from './offlineParking';
+import { createParkingClient, parkingKeys } from './parkingClient';
+import { api, ApiError, type ApiOptions, type ResidentAllocation, type User } from './api';
 
 const sessionKey = 'parkfair.refresh-token';
 const legacyKey = 'parkfair.access-token';
 const storageOptions = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
+const parkingSnapshotKey = 'parkfair.parking-snapshot.v1';
+const offlineParking = createOfflineParking({
+  read: () => SecureStore.getItemAsync(parkingSnapshotKey),
+  write: (value) => SecureStore.setItemAsync(parkingSnapshotKey, value, storageOptions),
+  clear: () => SecureStore.deleteItemAsync(parkingSnapshotKey),
+});
+
 type Credentials = { identifier: string; password: string };
 type Session = { user: User; token: string };
 type IssuedSession = Session & { refreshToken: string };
@@ -16,6 +25,9 @@ type SessionContextValue = {
   retryRestore: () => Promise<void>;
   signIn: (credentials: Credentials) => Promise<void>;
   signOut: () => Promise<void>;
+  parking: () => ReturnType<typeof createParkingClient>;
+  readCachedParking: (account: string) => ReturnType<typeof offlineParking.read>;
+  invalidateParking: () => Promise<void>;
   read: <T>(path: string, signal: AbortSignal) => Promise<T>;
 };
 
@@ -35,16 +47,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [restoreError, setRestoreError] = useState(false);
 
   const apply = useCallback((value: Session | null) => {
+    const previous = current.current?.user.id;
     current.current = value;
+    if (previous !== value?.user.id || !value) {
+      void offlineParking.activate(value?.user.role === 'RESIDENT' ? value.user.id : null).catch(() => undefined);
+      cache.clear();
+    }
     setSession(value);
-    if (!value) cache.clear();
   }, [cache]);
 
   const refresh = useCallback(() => {
     if (!pendingRefresh.current) {
       pendingRefresh.current = (async () => {
         const saved = await SecureStore.getItemAsync(sessionKey);
-        if (!saved) return null;
+        if (!saved) {
+          apply(null);
+          return null;
+        }
         try {
           const result = await api<IssuedSession>('/auth/refresh', { body: { refreshToken: saved } });
           const restored = await storeSession(result);
@@ -88,28 +107,54 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await pendingRefresh.current?.catch(() => undefined);
-    const saved = await SecureStore.getItemAsync(sessionKey);
-    if (saved) await api('/auth/logout', { body: { refreshToken: saved } });
-    await SecureStore.deleteItemAsync(sessionKey);
-    await SecureStore.deleteItemAsync(legacyKey);
-    apply(null);
-    setRestoreError(false);
-  }
-
-  async function read<T>(path: string, signal: AbortSignal) {
-    const token = current.current?.token;
     try {
-      return await api<T>(path, { token, signal });
-    } catch (error) {
-      if (!(error instanceof ApiError) || error.status !== 401 || signal.aborted) throw error;
-      const refreshed = current.current?.token !== token ? current.current : await refresh();
-      if (!refreshed) throw error;
-      return api<T>(path, { token: refreshed.token, signal });
+      const saved = await SecureStore.getItemAsync(sessionKey);
+      if (saved) await api('/auth/logout', { body: { refreshToken: saved } });
+    } finally {
+      apply(null);
+      setRestoreError(false);
+      await Promise.all([SecureStore.deleteItemAsync(sessionKey), SecureStore.deleteItemAsync(legacyKey),
+        offlineParking.activate(null)]);
     }
   }
 
+  async function request<T>(path: string, options: ApiOptions = {}) {
+    const before = current.current;
+    if (!before) throw new ApiError(401, 'Sign-in required.');
+    try {
+      return await api<T>(path, { ...options, token: before.token });
+    } catch (error) {
+      if (!(error instanceof ApiError) || ![401, 403].includes(error.status) || options.signal?.aborted) throw error;
+      if (error.status === 403 && path.startsWith('/resident/')) {
+        await offlineParking.activate(null);
+        throw error;
+      }
+      if (error.status !== 401) throw error;
+      const refreshed = current.current?.token !== before.token ? current.current : await refresh();
+      if (!refreshed || refreshed.user.id !== before.user.id) throw error;
+      return api<T>(path, { ...options, token: refreshed.token });
+    }
+  }
+
+  async function read<T>(path: string, signal: AbortSignal) {
+    const account = current.current?.user.id;
+    const result = await request<T>(path, { signal });
+    if (account && path === '/resident/dashboard') {
+      await offlineParking.save(account, result as ResidentAllocation).catch(() => undefined);
+    }
+    return result;
+  }
+
+  async function invalidateParking() {
+    const account = current.current?.user.id;
+    if (!account) return;
+    await Promise.all([cache.invalidateQueries({ queryKey: parkingKeys.resident(account) }),
+      cache.invalidateQueries({ queryKey: parkingKeys.administration(account) })]);
+  }
+
   return (
-    <SessionContext.Provider value={{ session, restoring, restoreError, retryRestore, signIn, signOut, read }}>
+    <SessionContext.Provider value={{ session, restoring, restoreError, retryRestore, signIn, signOut, read, parking: () => createParkingClient(request),
+        readCachedParking: offlineParking.read, invalidateParking }}>
       {children}
     </SessionContext.Provider>
   );

@@ -1,5 +1,7 @@
 # ParkFair 2.0 master plan
 
+Phase 3 implements local foundations and delivers the [isolated owner review](design/phase-3/REVIEW_PACKAGE.md) for visual decisions. Approved native implementation, asset clearance and hardware tests follow.
+
 Phase 2 implements the allocation and secure session backend locally. The admin workflow is available through the API. Admin and resident design work remains proposal-only until explicit owner approval. [Phase 2 status](DEVELOPMENT_STATUS.md) | [Design register](design/APPROVAL_REGISTER.md)
 
 The administrator owns parking decisions. ParkFair verifies, organizes, publishes and communicates them. An optional fairness recommendation explains capacity, priority and manual overrides.

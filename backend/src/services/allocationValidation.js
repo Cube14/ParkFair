@@ -4,6 +4,7 @@ const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 const Slot = require("../models/ParkingSlot");
 const { parkingTypeFor } = require("./assignmentService");
+const { coverageReport } = require("./allocationCoverage");
 const { societyDay } = require("./cycleSelection");
 
 const day = 86400000;
@@ -36,8 +37,8 @@ async function assess(cycle, version, session, now = new Date()) {
     }).session(session);
     if (overlap) errors.push(issue(null, "cycle", "OVERLAPPING_CYCLE", "Choose dates outside the effective or published cycle."));
   }
-  const flats = await Flat.find({ flatNumber: { $in: rows.map((r) => r.flatNumber) } }).session(session).lean();
-  const slots = await Slot.find({ slotNumber: { $in: rows.map((r) => r.slotNumber) } }).session(session).lean();
+  const flats = await Flat.find().select("flatNumber isActive").session(session).lean();
+  const slots = await Slot.find().select("slotNumber isActive maxCapacity side slotType").session(session).lean();
   const vehicles = await Vehicle.find({
     $or: [{ flatId: { $in: flats.map((f) => f._id) } },
       { vehicleNumber: { $in: rows.map((r) => r.vehicleNumber) } }],
@@ -46,6 +47,7 @@ async function assess(cycle, version, session, now = new Date()) {
     flatId: { $in: flats.map((f) => f._id) }, role: "RESIDENT",
   }).select("flatId isActive").session(session).lean();
 
+  const disabledFlats = new Set(accounts.filter((account) => account.isActive === false).map((account) => String(account.flatId)));
   const flatsByNumber = new Map(flats.map((flat) => [flat.flatNumber, flat]));
   const slotsByNumber = new Map(slots.map((slot) => [slot.slotNumber, slot]));
   const vehiclesByNumber = new Map(vehicles.map((vehicle) => [vehicle.vehicleNumber, vehicle]));
@@ -55,14 +57,14 @@ async function assess(cycle, version, session, now = new Date()) {
   const resolved = [];
   for (const row of rows) {
     const { row: line, flatNumber, slotNumber, vehicleNumber, notes } = row;
+    const errorCount = errors.length;
     const add = (field, code, message) => errors.push(issue(line, field, code, message));
     const flat = flatsByNumber.get(flatNumber);
     const slot = slotsByNumber.get(slotNumber);
 
     if (!flatNumber) add("flatNumber", "REQUIRED", "Enter the flat identifier.");
     else if (!flat) add("flatNumber", "UNKNOWN_FLAT", "Choose a flat from the administrator inventory.");
-    else if (flat.isActive === false || accounts.some((user) =>
-      user.flatId?.equals(flat._id) && user.isActive === false)) {
+    else if (flat.isActive === false || disabledFlats.has(String(flat._id))) {
       add("flatNumber", "INACTIVE_RESIDENT", "Choose an eligible flat with an active resident account, if one exists.");
     }
     if (flatNumber && firstFlat.has(flatNumber)) {
@@ -99,13 +101,15 @@ async function assess(cycle, version, session, now = new Date()) {
       if (firstVehicle.has(key)) add("vehicleNumber", "DUPLICATE_VEHICLE", `Review row ${firstVehicle.get(key)}.`);
       else firstVehicle.set(key, line);
     }
-    if (flat && slot && vehicle) resolved.push({
+    if (flat && slot && vehicle && errors.length === errorCount &&
+        !version.importIssues.some((entry) => entry.row === line)) resolved.push({
       flatId: flat._id, slotId: slot._id, vehicleId: vehicle._id, parkingType: parkingTypeFor(slot),
       flatNumber: flat.flatNumber, slotNumber: slot.slotNumber, slotSide: slot.side,
       vehicleNumber: vehicle.vehicleNumber, vehicleType: vehicle.vehicleType, notes,
     });
   }
-  return { issues: errors, resolved };
+  const coverage = coverageReport({ flats, vehicles, disabledFlats, slots, resolved, exclusions: version.exclusions, issues: errors, issue });
+  return { issues: errors, resolved, coverage };
 }
 
 module.exports = { assess, issue, manualRows, normalize };

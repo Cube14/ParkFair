@@ -33,9 +33,9 @@ async function versionByNumber(draftId, revision, session = null) {
   return version;
 }
 
-function fingerprint(cycle, resolved) {
+function fingerprint(cycle, { resolved, coverage }) {
   return createHash("sha256").update(JSON.stringify([
-    cycle.startDate, cycle.endDate, cycle.durationDays, cycle.latestPublicationId ?? null, resolved,
+    cycle.startDate, cycle.endDate, cycle.durationDays, cycle.latestPublicationId ?? null, resolved, coverage,
   ])).digest("hex");
 }
 
@@ -54,14 +54,14 @@ async function sourceRows(cycle, session) {
   }));
 }
 
-function createDraft({ cycleId, actorId, rows, copyAssignments }) {
+function createDraft({ cycleId, actorId, rows, copyAssignments, exclusions }) {
   return parkingWrite(async (session) => {
     const cycle = await cycleById(cycleId, session);
     if (cycle.status === "COMPLETED") throw new ApiError(409, "Completed cycles are closed to new drafts.");
     const [draft] = await AllocationDraft.create([{ cycleId, revision: 1, status: "DRAFT" }], { session });
     const draftRows = copyAssignments ? await sourceRows(cycle, session) : rows;
     const [version] = await AllocationRevision.create([{
-      draftId: draft._id, revision: 1, actorId, rows: draftRows, source: copyAssignments ? "LEGACY" : "MANUAL",
+      draftId: draft._id, revision: 1, actorId, rows: draftRows, exclusions, source: copyAssignments ? "LEGACY" : "MANUAL",
     }], { session });
     await audit(session, { actorId, action: "DRAFT_CREATED", entityId: draft._id, revision: 1,
       counts: { rows: draftRows.length } });
@@ -69,12 +69,14 @@ function createDraft({ cycleId, actorId, rows, copyAssignments }) {
   });
 }
 
-function reviseDraft({ draftId, expectedRevision, actorId, rows, source, importIssues }) {
+function reviseDraft({ draftId, expectedRevision, actorId, rows, source, importIssues, exclusions }) {
   return parkingWrite(async (session) => {
     const draft = await draftById(draftId, session);
     checkedRevision(draft, expectedRevision);
+    const prior = exclusions === undefined ? await versionByNumber(draftId, draft.revision, session) : null;
     const [version] = await AllocationRevision.create([{
       draftId, actorId, revision: ++draft.revision, source, rows, importIssues,
+      exclusions: exclusions ?? prior.exclusions,
     }], { session });
     draft.status = "DRAFT";
     draft.issues = importIssues;
@@ -112,14 +114,15 @@ function reviewDraft({ draftId, expectedRevision, actorId, action }) {
 
     const cycle = await cycleById(draft.cycleId, session);
     const version = await versionByNumber(draftId, draft.revision, session);
-    const { issues, resolved } = await assess(cycle, version, session);
-    const digest = fingerprint(cycle, resolved);
+    const checked = await assess(cycle, version, session);
+    const { issues, coverage } = checked;
+    const digest = fingerprint(cycle, checked);
     if (action === "approve" && (issues.length || digest !== draft.validatedDigest)) {
       draft.status = "DRAFT";
       draft.issues = issues;
       draft.validatedDigest = undefined;
       await draft.save({ session });
-      return { draft, issues, stale: true };
+      return { draft, issues, coverage, stale: true };
     }
 
     draft.status = issues.length ? "DRAFT" : "VALIDATED";
@@ -137,7 +140,7 @@ function reviewDraft({ draftId, expectedRevision, actorId, action }) {
       action: action === "approve" ? "DRAFT_APPROVED" : "DRAFT_VALIDATED",
       counts: { rows: version.rows.length, errors: issues.length },
     });
-    return { draft, issues };
+    return { draft, issues, coverage };
   });
 }
 
@@ -158,7 +161,7 @@ function publish({ draftId, expectedRevision, actorId, key }) {
     const cycle = await cycleById(draft.cycleId, session);
     const version = await versionByNumber(draftId, draft.revision, session);
     const checked = await assess(cycle, version, session);
-    if (checked.issues.length || fingerprint(cycle, checked.resolved) !== draft.approvedDigest) {
+    if (checked.issues.length || fingerprint(cycle, checked) !== draft.approvedDigest) {
       draft.status = "DRAFT";
       draft.issues = checked.issues;
       draft.validatedDigest = undefined;
@@ -168,14 +171,14 @@ function publish({ draftId, expectedRevision, actorId, key }) {
       await draft.save({ session });
       await audit(session, { actorId, action: "APPROVAL_INVALIDATED", entityId: draft._id, revision: draft.revision,
         counts: { errors: checked.issues.length } });
-      return { issues: checked.issues, stale: true };
+      return { issues: checked.issues, coverage: checked.coverage, stale: true };
     }
 
     const correction = Boolean(cycle.latestPublicationId || cycle.status === "ACTIVE");
     cycle.publicationSequence = (cycle.publicationSequence ?? 0) + 1;
     const [publication] = await AllocationPublication.create([{
       draftId, cycleId: cycle._id, revision: draft.revision, sequence: cycle.publicationSequence,
-      key, actorId, rowCount: checked.resolved.length, startDate: cycle.startDate, endDate: cycle.endDate,
+      key, actorId, rowCount: checked.resolved.length, exclusions: checked.coverage.excludedFlats, startDate: cycle.startDate, endDate: cycle.endDate,
     }], { session });
     await ParkingAssignment.insertMany(checked.resolved.map((row) => ({
       cycleId: cycle._id, publicationId: publication._id, ...row,
@@ -203,6 +206,13 @@ async function draftDetails(draftId) {
   return { draft, version: await versionByNumber(draftId, draft.revision) };
 }
 
+async function getCoverage(draftId) {
+  const { draft, version } = await draftDetails(draftId);
+  const cycle = await cycleById(draft.cycleId, null);
+  const { coverage, issues } = await assess(cycle, version, null);
+  return { revision: version.revision, coverage, issues };
+}
+
 async function compare(draftId, from, to) {
   const [before, after] = await Promise.all([versionByNumber(draftId, from), versionByNumber(draftId, to)]);
   const prior = new Map(before.rows.map((row) => [row.row, row.toObject()]));
@@ -214,4 +224,4 @@ async function compare(draftId, from, to) {
   });
 }
 
-module.exports = { createDraft, reviseDraft, reviewDraft, publish, draftDetails, versionByNumber, compare };
+module.exports = { createDraft, reviseDraft, reviewDraft, publish, draftDetails, versionByNumber, compare, getCoverage };

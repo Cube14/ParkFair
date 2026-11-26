@@ -1,5 +1,7 @@
 # UI and UX audit
 
+Phase 3 visual directions and actual isolated previews are in the [owner review package](design/phase-3/REVIEW_PACKAGE.md). Existing visual assets remain in place.
+
 Phase 2 preserves the resident design and originals. The lint fixes keep existing layout, media and motion. The owner must approve substantial changes before integration. See the [policy](design/DESIGN_APPROVAL_POLICY.md) and [isolated concepts](design/PHASE_2_CONCEPTS.md).
 
 ## Resident experience to carry forward
