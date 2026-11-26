@@ -20,8 +20,7 @@ const allocationRoutes = require(
 const app = express();
 const notificationRoutes =
 require("./routes/notificationRoutes");
-const notificationRoutes =
-require("./routes/notificationRoutes");
+
 
 // Middleware
 app.use(cors());

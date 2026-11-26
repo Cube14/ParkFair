@@ -146,7 +146,7 @@ Dear *${flat.ownerName}*,
 
 Your parking allocation for the upcoming parking cycle is as follows.
 
-Please park your vehicle in the assigned location starting from 16 Jul 2026.
+Please park your vehicle in the assigned location .
 
 ━━━━━━━━━━━━━━━━━━
 
