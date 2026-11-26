@@ -45,13 +45,16 @@ async function activatePublication(cycle, session, now) {
   }
 }
 
-async function setStatusInTransaction(cycleId, status, actorId, session, now = new Date()) {
+async function setStatusInTransaction(cycleId, status, actorId, session, now = new Date(), publicationId) {
   const cycle = await ParkingCycle.findById(cycleId).session(session);
   if (!cycle) throw new ApiError(404, "Cycle not found.");
   if (status === "PLANNED" && cycle.status !== "PLANNED") {
     throw new ApiError(409, "An effective or completed cycle cannot return to planning.");
   }
   if (status === "ACTIVE") {
+    if (publicationId && !cycle.latestPublicationId?.equals(publicationId)) {
+      throw new ApiError(409, "This publication has been superseded.");
+    }
     const today = societyDay(now);
     if (cycle.status === "COMPLETED" || cycle.startDate >= dayAfter(today) || cycle.endDate < today) {
       throw new ApiError(409, "Only an open cycle effective today can be activated.");
@@ -85,12 +88,12 @@ async function setStatusInTransaction(cycleId, status, actorId, session, now = n
   return cycle;
 }
 
-function setStatus(cycleId, status, actorId) {
-  return parkingWrite((session) => setStatusInTransaction(cycleId, status, actorId, session));
+function setStatus(cycleId, status, actorId, publicationId) {
+  return parkingWrite((session) => setStatusInTransaction(cycleId, status, actorId, session, new Date(), publicationId));
 }
 
 async function updateCycleStatus(req, res) {
-  const data = await setStatus(req.params.id, req.body.status, req.user.id);
+  const data = await setStatus(req.params.id, req.body.status, req.user.id, req.body.publicationId);
   res.json({ success: true, message: "Cycle status updated", data });
 }
 

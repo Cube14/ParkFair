@@ -1,3 +1,5 @@
+import { fetch as expoFetch } from 'expo/fetch';
+
 export type Role = 'ADMIN' | 'RESIDENT';
 export type User = { id: string; username: string; role: Role };
 export type ResidentAllocation = {
@@ -24,7 +26,7 @@ export class ApiError extends Error {
 export type ApiOptions = {
   token?: string;
   body?: Record<string, unknown>;
-  raw?: Blob;
+  raw?: Blob | Uint8Array<ArrayBuffer>;
   headers?: Record<string, string>;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   signal?: AbortSignal;
@@ -48,10 +50,11 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   if (options.signal?.aborted) cancel();
   options.signal?.addEventListener('abort', cancel, { once: true });
   const timeout = setTimeout(cancel, 15000);
-  let response: Response;
+  let response: Pick<Response, 'ok' | 'status' | 'json'>;
   let result;
   try {
-    response = await fetch(base.href.replace(/\/$/, '') + path, {
+    const send = options.raw instanceof Uint8Array ? expoFetch : fetch;
+    response = await send(base.href.replace(/\/$/, '') + path, {
       method: options.method ?? (options.body || options.raw ? 'POST' : 'GET'),
       headers: {
         Accept: 'application/json',

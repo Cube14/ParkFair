@@ -25,7 +25,7 @@ const status = oneOf("PLANNED", "ACTIVE", "COMPLETED");
 
 router.post("/", validateBody(cycleFields, { status }), validateCycleDates, createCycle);
 router.get("/", getCycles);
-router.put("/:id/status", validateIds("id"), validateBody({ status }), updateCycleStatus);
+router.put("/:id/status", validateIds("id"), validateBody({ status }, { publicationId: id }), updateCycleStatus);
 router.delete("/:id", validateIds("id"), deleteCycle);
 router.put("/:id/complete", validateIds("id"), completeCycle);
 module.exports = router;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createParkingClient, parkingKeys } from '../src/parkingClient.ts';
+import { applyDraftReview, createParkingClient, parkingKeys } from '../src/parkingClient.ts';
 import { createOfflineParking } from '../src/offlineParking.ts';
 
 test('typed parking client encodes IDs, keeps raw uploads and forwards explicit revision and idempotency', async () => {
@@ -56,4 +56,24 @@ test('offline parking stores only a short-lived account projection and logout pu
   await Promise.all([cache.save('two', snapshot), cache.activate(null)]);
   assert.equal(value, null);
   assert.equal(await cache.read('two'), null);
+});
+
+test('native file preview and activation preserve binary input and the reviewed publication', async () => {
+  const calls = [];
+  const client = createParkingClient(async (path, options) => { calls.push({ path, options }); return {}; });
+  const bytes = new TextEncoder().encode('Flat,Bay\r\n001,A-12');
+  await client.previewImport('draft', { filename: 'chart.csv', mime: 'text/csv', bytes });
+  await client.activate('cycle', 'reviewed-publication');
+  assert.equal(calls[0].options.raw, bytes);
+  assert.deepEqual(calls[1].options.body, { status: 'ACTIVE', publicationId: 'reviewed-publication' });
+});
+
+test('validation and approval preserve the chart only for the exact reviewed revision', () => {
+  const version = { revision: 2, rows: [{ row: 2, flatNumber: '001', slotNumber: 'A-12' }] };
+  const current = { draft: { _id: 'one', revision: 2, status: 'DRAFT' }, version };
+  const validated = { draft: { ...current.draft, status: 'VALIDATED' }, issues: [] };
+  const result = applyDraftReview(current, validated);
+  assert.equal(result.version, version);
+  assert.equal(result.draft.status, 'VALIDATED');
+  assert.equal(applyDraftReview(result, { draft: { ...validated.draft, revision: 3 } }).version, undefined);
 });

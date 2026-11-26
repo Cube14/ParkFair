@@ -1,5 +1,15 @@
 # Development status
 
+## Phase 4B · native qualification
+
+The API 36 Google APIs x86-64 emulator booted with two cores and 2 GB of requested memory. The development APK installed and launched with the project-scoped CMake workaround. The API 37 Play image's boot failure remains unresolved. The debug APK measured 94,115,694 bytes. ADB reported 3,792 ms for a cold activity launch. A 231-frame navigation sample recorded 43 janky frames, 24 ms median and 44 ms at the 95th percentile. Resident navigation used 315,420 KiB total PSS. These are emulator development-build measurements.
+
+An administrator signed in over isolated, certificate-validated HTTPS, created a planned cycle, selected a CSV through Android's document picker, mapped unfamiliar headers, corrected an uncovered flat, compared revisions, approved, published and manually activated the allocation. The communication stage displayed two pending notification entries. A resident saw A-12 effective and C-03 upcoming, opened history and the garage, and read the timestamped A-12 snapshot while disconnected. Native session restoration, logout, revocation and disabled-account rejection were exercised. [Import](design/phase-4/native/native-import-preview.png) · [Correction](design/phase-4/native/native-correction-sheet.png) · [Publication](design/phase-4/native/native-publication.png) · [Resident home](design/phase-4/native/native-resident-home.png) · [Offline](design/phase-4/native/native-resident-offline.png)
+
+Local verification passed 32 backend tests and four mobile tests, web lint and production build, mobile lint and TypeScript, Expo dependency checks, Expo Doctor 20/20 and both Hermes exports. The hosted reference commit passed [GitHub verification](https://github.com/Cube14/ParkFair/actions/runs/45799012276). Phase 4B changes are local.
+
+iPhone installation, LAN trust on the owner's phone, native 3D rendering, physical-device performance, final visual assets and actual floor geometry remain pending. The app uses the static garage fallback. [Device setup and Windows commands](PHASE_4B_DEVICE_SETUP.md) · [Consolidated approval checkpoint](design/phase-4/FINAL_CHECKPOINT.md)
+
 ## Phase 3 local work and owner review
 
 | Status | Result |

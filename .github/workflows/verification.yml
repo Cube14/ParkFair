@@ -58,4 +58,5 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npx expo install --check
       - run: npx expo export --platform all

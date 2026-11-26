@@ -1,10 +1,12 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Action, Copy, Loading, Screen } from '../components/Screen';
 import { SessionProvider, useSession } from '../session';
-import { useTheme } from '../theme';
+import { AppearanceProvider, useTheme } from '../theme';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, retry: false } } });
 
@@ -40,10 +42,14 @@ function Navigation() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', state => focusManager.setFocused(state === 'active'));
+    return () => listener.remove();
+  }, []);
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <SessionProvider><Navigation /></SessionProvider>
+        <AppearanceProvider><SessionProvider><Navigation /></SessionProvider></AppearanceProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

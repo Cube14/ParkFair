@@ -15,13 +15,18 @@ export type DraftResponse = {
   issues?: Issue[];
   coverage?: Coverage;
 };
-type Allocation = {
+export function applyDraftReview(current: DraftResponse, review: DraftResponse): DraftResponse {
+  if (current.draft._id !== review.draft._id || current.draft.revision !== review.draft.revision) return review;
+  return { ...review, version: review.version ?? current.version };
+}
+export type Allocation = {
   cycle: { id: string; name: string; startDate: string; endDate: string };
+  publication?: { id: string } | null;
   parking: { type: 'INSIDE' | 'OUTSIDE'; slot: string | null };
   vehicle: { id: string | null; number: string | null };
 };
-type ColumnMapping = Partial<Record<keyof Row, number>>;
-type InputFile = { filename: string; mime: 'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; bytes: Blob };
+export type ColumnMapping = Partial<Record<keyof Row, number>>;
+export type InputFile = { filename: string; mime: 'text/csv' | 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; bytes: Blob | Uint8Array<ArrayBuffer> };
 type Request = <T>(path: string, options?: ApiOptions) => Promise<T>;
 type Schedule = { _id: string; dueAt: string; status: 'PENDING' | 'RETRY' | 'ACTIVATED' | 'CANCELLED' | 'FAILED' | 'SUPERSEDED' };
 
@@ -44,6 +49,8 @@ export function createParkingClient(request: Request) {
     },
   });
   return {
+    createCycle: (data: { cycleName: string; startDate: string; endDate: string; durationDays: number }) =>
+      mutate<{ data: { _id: string; cycleName: string; status: string } }>('/cycles', data),
     createDraft: (cycleId: string, initial?: { rows?: Row[]; copyAssignments?: boolean; exclusions?: Exclusion[] }) =>
       mutate<DraftResponse>(drafts, { cycleId, ...initial }),
     getDraft: (id: string) => request<DraftResponse>(base(id)),
@@ -65,7 +72,8 @@ export function createParkingClient(request: Request) {
     publish: (id: string, revision: number, key: string) =>
       mutate<{ publication: { _id: string; cycleId: string; sequence: number }; replayed: boolean }>(
         base(id) + '/publish', { revision }, 'POST', { 'Idempotency-Key': key }),
-    activate: (cycleId: string) => mutate('/cycles/' + segment(cycleId) + '/status', { status: 'ACTIVE' }, 'PUT'),
+    activate: (cycleId: string, publicationId?: string) => mutate('/cycles/' + segment(cycleId) + '/status',
+      { status: 'ACTIVE', ...(publicationId && { publicationId }) }, 'PUT'),
     scheduleActivation: (cycleId: string, publicationId: string, approved: true) =>
       mutate<{ schedule: Schedule }>('/cycles/' + segment(cycleId) + '/activation-schedules', { publicationId, approved }),
     schedules: (cycleId: string) => request<{ schedules: Schedule[] }>('/cycles/' + segment(cycleId) + '/activation-schedules'),

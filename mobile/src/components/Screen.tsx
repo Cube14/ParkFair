@@ -8,7 +8,7 @@ export function Screen({ title, children }: { title: string; children: ReactNode
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{
-        padding: colors.spacing.page, gap: colors.spacing.item, flexGrow: 1, justifyContent: 'center',
+        padding: colors.spacing.page, gap: colors.spacing.item, flexGrow: 1, width: '100%', maxWidth: 760, alignSelf: 'center',
       }}>
         <Text accessibilityRole="header" style={{ fontSize: 32, fontWeight: '700', color: colors.text }}>{title}</Text>
         {children}

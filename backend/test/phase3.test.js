@@ -136,6 +136,11 @@ test("Phase 3 workflows use synthetic replica-set fixtures", { skip: !port && "S
     assert.deepEqual(await runDueForTesting(() => Date.parse(scheduled.dueAt) - 1000), []);
     assert.equal((await Cycle.findById(cycle.id)).status, "PLANNED");
     await publish(cycle, "superseding");
+    const obsolete = await call(`/cycles/${cycle.id}/status`, "PUT", {
+      status: "ACTIVE", publicationId: superseded._id,
+    });
+    assert.equal(obsolete.status, 409);
+    assert.match(obsolete.body.message, /superseded/);
     const [ignored] = await runDueForTesting(() => Date.parse(scheduled.dueAt));
     assert.equal(ignored.status, "SUPERSEDED");
     assert.equal((await Cycle.findById(cycle.id)).status, "PLANNED");
@@ -182,12 +187,18 @@ test("Phase 3 workflows use synthetic replica-set fixtures", { skip: !port && "S
     assert.equal((await req("/resident/mock-push-installation", "POST", body, userSession.token)).status, 201);
     assert.equal((await req("/resident/mock-push-installation", "POST", body, otherSession.token)).status, 409);
     const event = await NotificationOutbox.findOne({ publicationId: effectivePublication._id });
+    const outcomes = `/allocation-drafts/publications/${next.id}/${effectivePublication._id}/notifications`;
+    assert.equal((await req(outcomes, "GET", undefined, userSession.token)).status, 403);
+    assert.deepEqual((await call(outcomes)).body.counts, [{ _id: "PENDING", count: 1 }]);
     assert.equal(await dispatchSynthetic(event.eventId, admin.id), null);
     const execution = new Date(Date.parse(workerJob.dueAt) + 5 * 60000);
     // Move the fixture family expiry beyond the injected execution clock.
     await AuthSession.updateOne({ _id: userSession.sessionId }, { expiresAt: new Date(+execution + 86400000) });
     const sent = await dispatchSynthetic(event.eventId, admin.id, execution);
     assert.deepEqual(sent, { state: "DELIVERED", installations: 1 });
+    const summary = (await call(outcomes)).body;
+    assert.equal(summary.mode, "SIMULATED_ONLY");
+    assert.deepEqual(summary.counts, [{ _id: "DELIVERED", count: 1 }]);
     assert.equal(await dispatchSynthetic(event.eventId, admin.id, execution), null);
     assert.equal((await req("/resident/inbox", "GET", undefined, userSession.token)).body.events.length, 1);
     assert.equal((await req("/resident/inbox", "GET", undefined, otherSession.token)).body.events.length, 0);

@@ -1,6 +1,6 @@
 const ParkingAssignment = require("../models/ParkingAssignment");
 const { Router, raw } = require("express");
-const { AllocationDraft, AllocationPublication, AdminAudit } = require("../models/AllocationWorkflow");
+const { AllocationDraft, AllocationPublication, AdminAudit, NotificationOutbox } = require("../models/AllocationWorkflow");
 const service = require("../services/allocationDrafts");
 const { parseAllocationFile, exportCsv } = require("../services/allocationImport");
 const { manualRows, normalize } = require("../services/allocationValidation");
@@ -54,6 +54,18 @@ router.get("/publications/:cycleId", validateIds("cycleId"), async (req, res) =>
     cycleId: req.params.cycleId,
   }).select("-key").sort({ sequence: -1 }).limit(100) });
 });
+router.get("/publications/:cycleId/:publicationId/notifications",
+  validateIds("cycleId", "publicationId"), async (req, res) => {
+    const publication = await AllocationPublication.findOne({
+      _id: req.params.publicationId, cycleId: req.params.cycleId,
+    }).select("_id");
+    if (!publication) throw new ApiError(404, "Publication not found.");
+    const counts = await NotificationOutbox.aggregate([
+      { $match: { publicationId: publication._id } },
+      { $group: { _id: "$state", count: { $sum: 1 } } },
+    ]);
+    send(res, { mode: "SIMULATED_ONLY", counts });
+  });
 router.get("/publications/:cycleId/:publicationId", validateIds("cycleId", "publicationId"), async (req, res) => {
   const { cycleId, publicationId } = req.params;
   const publication = await AllocationPublication.findOne({ _id: publicationId, cycleId }).select("-key");
