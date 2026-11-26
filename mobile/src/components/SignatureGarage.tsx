@@ -19,7 +19,7 @@ export function SignatureGarage({ registration, status }: {registration?:string;
   const [touching,setTouching] = useState(false);
   const close = useCallback(() => { setTouching(false); setInteractive(false); setReady(false); },[]);
   const fallback = useCallback(() => { setFailed(true); close(); },[close]);
-  const viewport = Math.max(295, Math.min(540, Math.round(height * .43)));
+  const viewport = Math.max(270, Math.min(460, Math.round(height * .385)));
 
   useFocusEffect(useCallback(() => {
     const controller = new AbortController();
@@ -43,9 +43,9 @@ export function SignatureGarage({ registration, status }: {registration?:string;
     return () => clearTimeout(timeout);
   },[interactive,ready,fallback]);
 
-  const options = new URLSearchParams({surface:c.plate,ink:c.ink,motion:motion?'1':'0',scene:'5d2'}).toString();
+  const options = new URLSearchParams({surface:c.plate,ink:c.ink,paper:c.paper,rule:c.line,motion:motion?'1':'0',scene:'5d3'}).toString();
   return <SignatureShell title="Private garage" tabbed scrollEnabled={!touching}>
-    <View style={{paddingHorizontal:20,paddingTop:18,paddingBottom:12,gap:4}}>
+    <View style={{paddingHorizontal:20,paddingTop:12,paddingBottom:9,gap:3}}>
       <Text style={{color:c.signal,fontSize:11,letterSpacing:2,fontWeight:'800'}}>MOTOR COURT</Text>
       <Display size={36}>Private garage</Display>
     </View>
@@ -61,10 +61,10 @@ export function SignatureGarage({ registration, status }: {registration?:string;
           if (nativeEvent.data === 'garage-failed') fallback();
         }}/>
     </View> : <VehiclePortrait />}
-    <View style={{paddingHorizontal:20,paddingVertical:14,gap:5,backgroundColor:c.panel,borderBottomWidth:1,borderColor:c.line}}>
+    <View style={{paddingHorizontal:20,paddingVertical:10,gap:4,backgroundColor:c.panel,borderBottomWidth:1,borderColor:c.line}}>
       <Text style={{color:c.signal,fontSize:11,letterSpacing:2,fontWeight:'800'}}>ILLUSTRATIVE VEHICLE</Text>
       <Text style={{color:c.ink,fontFamily:'serif',fontSize:23}}>{interactive ? 'Porsche 911 Carrera 4S' : 'Garage photograph'}</Text>
-      {interactive && ready && <Text style={{color:c.muted}}>Drag to orbit · Pinch to zoom</Text>}
+      {interactive && ready && <Text style={{color:c.muted,fontSize:13}}>Drag to orbit · Pinch to zoom</Text>}
       {failed && <Text accessibilityRole="alert" style={{color:c.ink}}>3D view unavailable. Showing the garage photograph.</Text>}
       {interactive && !ready && <Text accessibilityLiveRegion="polite" style={{color:c.muted}}>Loading vehicle…</Text>}
       {available && <View style={{flexDirection:'row',flexWrap:'wrap'}}>
@@ -74,7 +74,7 @@ export function SignatureGarage({ registration, status }: {registration?:string;
         }}/>
         {ready && <StudioButton title="Reset view" onPress={()=>view.current?.injectJavaScript('window.parkfairResetCamera?.(); true;')}/>}
       </View>}
-      {interactive && ready && <Text accessibilityRole="link" style={{color:c.signal,minHeight:44,paddingTop:10}}
+      {interactive && ready && <Text accessibilityRole="link" style={{color:c.signal,minHeight:44,paddingTop:6,fontSize:13}}
         onPress={() => { void Linking.openURL('https://sketchfab.com/3d-models/free-porsche-911-carrera-4s-d01b254483794de3819786d93e0e1ebf').catch(() => {}); }}>
         Lionsharp Studios · CC BY-SA 4.0
       </Text>}
