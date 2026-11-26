@@ -1,5 +1,20 @@
 # Development status
 
+## Phase 2 local implementation
+
+| Status | Result |
+| --- | --- |
+| VERIFIED | Phase 1 baseline at `df8f030` matched the remote foundation branch. Re-ran all 15 tests, web build, browser smoke, Docker readiness, mobile lint/type check and Expo Doctor. |
+| IMPLEMENTED AND TESTED | Drafts, manual and CSV/XLSX entry, revision history, validation, approval, transactional publication, explicit activation, resident schedule/history, append-only audit, mock outbox and secure refresh sessions. Final isolated suite has 26 passing tests and no skips. |
+| IMPLEMENTED AND TESTED | Web lint is clean, web build and browser session/role smoke passed, the API container reached readiness, and both native JS bundles exported. Fresh audits report zero advisories across the three packages at verification time. |
+| IMPLEMENTED BUT NOT RUNTIME-VERIFIED | SecureStore and role transitions on Android/iOS devices, hosted GitHub Actions and the production index rollout. |
+| BLOCKED | Atlas credential rotation and access-list/TLS troubleshooting remain owner actions. Production rollout, real provider calls, signing and remote publication require approval. |
+| PLANNED | The isolated admin A/B concepts and resident directions require explicit approval. Next, integrate the selected workflow into the web/mobile clients, test staging with a representative chart and qualify native sessions before releasing. |
+
+[Verification and change inventory](PHASE_2_VERIFICATION.md) | [Allocation workflow](PHASE_2_ALLOCATION.md) | [Sessions](PHASE_2_SESSIONS.md) | [Additive migration and indexes](PHASE_2_MIGRATION.md) | [Visual previews](design/PHASE_2_CONCEPTS.md)
+
+## Phase 1 historical record
+
 Verified 26 November 2026 on Node 24.14.1 and npm 11.11.0. The clean source baseline was `frontend-setup` at `64c340152faad02463806125fe4064c121cbece6`, matching the remote branch. Local work is on `feature/parkfair-2.0-foundation`. No remote branch was changed.
 
 ## Progress and evidence

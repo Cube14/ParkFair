@@ -1,7 +1,7 @@
 
 
 import {
-  useEffect,
+  useCallback, useEffect,
   useState,
 } from "react";
 
@@ -22,7 +22,7 @@ import PageHeader from "../components/ui/PageHeader";
 
 import {
   useTheme,
-} from "../context/ThemeContext";
+} from "../context/theme";
 
 import {
   getThemeClasses,
@@ -47,11 +47,9 @@ function Analytics() {
   const styles =
     getThemeClasses(theme);
 
-  useEffect(() => {
-    loadData();
-  }, []);
 
-  const loadData = async () => {
+
+  const loadData = useCallback(async () => {
     try {
       const [
         flatsRes,
@@ -83,7 +81,13 @@ function Analytics() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadData();
+    });
+  }, [loadData]);
 
   if (loading) {
     return (
@@ -1160,4 +1164,4 @@ function HealthCard({
   );
 }
 
-export default Analytics; 
+export default Analytics;

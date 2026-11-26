@@ -1,3 +1,4 @@
+const { visibleAssignments } = require("../services/assignmentVisibility");
 const ParkingCycle = require("../models/ParkingCycle");
 const ParkingAssignment = require("../models/ParkingAssignment");
 const ParkingSlot = require("../models/ParkingSlot");
@@ -11,7 +12,7 @@ async function getCycleMatrix(req, res) {
 
   const [slots, assignments] = await Promise.all([
     ParkingSlot.find({ isActive: true }),
-    ParkingAssignment.find({ cycleId, assignmentStatus: "ACTIVE" })
+    ParkingAssignment.find({ ...visibleAssignments(cycle), assignmentStatus: "ACTIVE" })
       .populate("flatId", "flatNumber").populate("slotId", "slotNumber"),
   ]);
   const slotCapacity = new Map();

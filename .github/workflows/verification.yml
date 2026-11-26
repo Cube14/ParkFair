@@ -18,8 +18,7 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
-        env:
-          PUPPETEER_SKIP_DOWNLOAD: 'true'
+      - run: npm audit --audit-level=high
       - run: docker compose -p parkfair-ci -f ../infrastructure/compose.dev.yml up -d --wait
       - run: npm test
         env:
@@ -39,9 +38,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=high
       - run: npm run build
       - run: npm run lint
-        continue-on-error: true # Existing lint failures are documented in DEVELOPMENT_STATUS.md.
   mobile:
     runs-on: ubuntu-latest
     defaults:
@@ -55,6 +54,7 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
       - run: npx expo export --platform android

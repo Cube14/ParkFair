@@ -11,11 +11,13 @@ function societyDay(now = new Date()) {
   return new Date(`${dayFormat.format(now)}T00:00:00.000Z`);
 }
 
+const dayAfter = (date) => new Date(+date + dayMs);
+
 function currentCycle(now = new Date()) {
   const today = societyDay(now);
   return ParkingCycle.findOne({
     status: "ACTIVE",
-    startDate: { $lt: new Date(+today + dayMs) },
+    startDate: { $lt: dayAfter(today) },
     endDate: { $gte: today },
   }).sort({ startDate: -1, _id: 1 });
 }
@@ -33,5 +35,5 @@ function remainingDays(endDate, now = new Date()) {
 }
 
 module.exports = {
-  currentCycle, notificationCycle, remainingDays, formatCycleDate: (value) => displayFormat.format(value),
+  currentCycle, notificationCycle, remainingDays, societyDay, dayAfter, formatCycleDate: (value) => displayFormat.format(value),
 };

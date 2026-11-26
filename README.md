@@ -6,4 +6,6 @@ ParkFair manages residential parking cycles, physical assignments and resident a
 
 Use Node 24 and run `npm ci` in each package you need. Start the isolated replica set with `docker compose -f infrastructure/compose.dev.yml up -d --wait`. Copy `backend/.env.example` to `backend/.env.development` and set a development-only JWT secret of at least 32 bytes. Start the API with `npm run dev --prefix backend` and the web app with `npm run dev --prefix frontend`.
 
+Set the exact local Vite origin in backend WEB_ORIGINS for cookie-based sign-in. See [the allocation API workflow](docs/PHASE_2_ALLOCATION.md) and [design approval policy](docs/design/DESIGN_APPROVAL_POLICY.md).
+
 See [DevOps setup](docs/DEVOPS_PLAN.md) for configuration and fixture tests, [mobile setup](mobile/README.md) for Expo, and [development status](docs/DEVELOPMENT_STATUS.md) for verification and remaining work.

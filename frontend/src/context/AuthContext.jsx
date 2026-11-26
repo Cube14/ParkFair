@@ -1,89 +1,43 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-
+import { useCallback, useEffect, useState } from "react";
 import authService from "../services/authService";
 import { sessionEndedEvent } from "../services/api";
+import { AuthContext } from "./auth";
 
-const AuthContext = createContext();
-
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [
-    isAuthenticated,
-    setIsAuthenticated,
-  ] = useState(false);
-
-  useEffect(() => {
-    const clearSession = () => {
-      setUser(null);
-      setIsAuthenticated(false);
-    };
-    window.addEventListener(sessionEndedEvent, clearSession);
-    return () => window.removeEventListener(sessionEndedEvent, clearSession);
-  }, []);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
-      const user =
-        await authService.getCurrentUser();
-
-      setUser(user);
-      setIsAuthenticated(true);
+      setUser(await authService.getCurrentUser());
     } catch {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-
       setUser(null);
-      setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (credentials) => {
-    const data =
-      await authService.login(credentials);
+  useEffect(() => {
+    const clearSession = () => setUser(null);
+    window.addEventListener(sessionEndedEvent, clearSession);
+    void Promise.resolve().then(checkAuth);
+    return () => window.removeEventListener(sessionEndedEvent, clearSession);
+  }, [checkAuth]);
 
+  async function login(credentials) {
+    const data = await authService.login(credentials);
     setUser(data.user);
-    setIsAuthenticated(true);
-
     return data;
-  };
+  }
 
-  const logout = async () => {
+  async function logout() {
     await authService.logout();
-
     setUser(null);
-    setIsAuthenticated(false);
-  };
+  }
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        isAuthenticated,
-        login,
-        logout,
-        checkAuth,
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, isAuthenticated: Boolean(user), login, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () =>
-  useContext(AuthContext);
+}

@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { useTheme } from "../../context/ThemeContext";
 
 function AuthButton({
   children,
@@ -10,7 +9,6 @@ function AuthButton({
   loading = false,
   className = "",
 }) {
-  const { theme } = useTheme();
 
   return (
     <motion.button

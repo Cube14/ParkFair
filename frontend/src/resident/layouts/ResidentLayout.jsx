@@ -5,7 +5,7 @@ import ResidentHeader from "../components/ResidentHeader";
 import BottomNav from "../components/BottomNav";
 import ResidentSidebar from "../components/ResidentSidebar";
 
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/theme";
 
 function ResidentLayout() {
   const { theme } = useTheme();

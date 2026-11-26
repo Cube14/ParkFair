@@ -1,7 +1,11 @@
+const { parkingWrite } = require("../services/parkingWrite");
 const ParkingSlot = require("../models/ParkingSlot");
 
 const createSlot = async (req, res) => {
-  const slot = await ParkingSlot.create(req.body);
+  const slot = await parkingWrite(async (session) => {
+    const [created] = await ParkingSlot.create([req.body], { session });
+    return created;
+  });
 
   res.status(201).json({
     success: true,

@@ -102,13 +102,13 @@ test("JSON errors and login validation are sanitized and CORS is explicit", asyn
 });
 
 test("WhatsApp stays unloaded and disabled in test and development even with both flags", async () => {
-  assert.equal(require.cache[require.resolve("whatsapp-web.js")], undefined);
+  assert.equal(Object.keys(require.cache).some((file) => file.includes("whatsapp-web.js")), false);
   process.env.WHATSAPP_ENABLED = process.env.WHATSAPP_SEND_APPROVED = "true";
   try {
     for (const mode of ["test", "development"]) {
       process.env.NODE_ENV = mode;
       await assert.rejects(sendMessage("0000000000", "synthetic"), { status: 503 });
-      assert.equal(require.cache[require.resolve("whatsapp-web.js")], undefined);
+      assert.equal(Object.keys(require.cache).some((file) => file.includes("whatsapp-web.js")), false);
     }
   } finally {
     process.env.WHATSAPP_ENABLED = process.env.WHATSAPP_SEND_APPROVED = "false";
@@ -224,6 +224,19 @@ test("HTTP and MongoDB replica set integration", { skip: !port && "Set PARKFAIR_
     },
   });
 
+  const staging = await ParkingCycle.create({
+    cycleName: "Fixture staging", startDate: date(15), endDate: date(20), durationDays: 6,
+  });
+  const historicalAssignment = (parent, target, residentFlat, residentVehicle) => ({
+    cycleId: parent._id, slotId: target._id, flatId: residentFlat._id, vehicleId: residentVehicle._id,
+    parkingType: target.side === "OUTSIDE" ? "OUTSIDE" : "INSIDE",
+  });
+  await ParkingAssignment.create([
+    historicalAssignment(cycle, slot, flat, vehicle),
+    historicalAssignment(cycle, outside, otherFlat, otherVehicle),
+    historicalAssignment(old, outside, flat, vehicle),
+  ]);
+
   await t.test("invalid writes, capacity and duplicate flat checks protect competing requests", async () => {
     const invalid = await adminRequest("/vehicles", { method: "POST", body: { vehicleNumber: { $ne: "" } } });
     assert.equal(invalid.status, 400);
@@ -231,18 +244,18 @@ test("HTTP and MongoDB replica set integration", { skip: !port && "Set PARKFAIR_
       method: "PUT", body: { $set: { isActive: false } },
     });
     assert.equal(injected.status, 400);
-    assert.equal((await create(cycle, slot, flat, otherVehicle)).status, 400);
+    assert.equal((await create(staging, slot, flat, otherVehicle)).status, 400);
 
-    const results = await Promise.all([create(cycle, slot, flat, vehicle), create(cycle, slot, otherFlat, otherVehicle)]);
+    const results = await Promise.all([create(staging, slot, flat, vehicle), create(staging, slot, otherFlat, otherVehicle)]);
     assert.deepEqual(results.map(({ status }) => status).sort(), [201, 409]);
     const winnerA = results[0].status === 201;
     const winner = winnerA ? flat : otherFlat;
     const winnerVehicle = winnerA ? vehicle : otherVehicle;
     const loser = winnerA ? otherFlat : flat;
     const loserVehicle = winnerA ? otherVehicle : vehicle;
-    assert.equal((await create(cycle, outside, winner, winnerVehicle)).status, 409);
-    assert.equal((await create(cycle, outside, loser, loserVehicle)).status, 201);
-    const loserAssignment = await ParkingAssignment.findOne({ cycleId: cycle._id, flatId: loser._id });
+    assert.equal((await create(staging, outside, winner, winnerVehicle)).status, 409);
+    assert.equal((await create(staging, outside, loser, loserVehicle)).status, 201);
+    const loserAssignment = await ParkingAssignment.findOne({ cycleId: staging._id, flatId: loser._id });
     assert.equal((await adminRequest(`/assignments/${loserAssignment._id}`, {
       method: "PUT", body: { slotId: String(slot._id) },
     })).status, 409);
@@ -269,7 +282,7 @@ test("HTTP and MongoDB replica set integration", { skip: !port && "Set PARKFAIR_
   });
 
   await t.test("resident, occupancy and preview use the same current cycle and exclude past records", async () => {
-    assert.equal((await create(old, outside, flat, vehicle)).status, 201);
+    assert.equal((await create(old, outside, flat, vehicle)).status, 409);
     assert.equal((await create(future, outside, flat, vehicle)).status, 201);
     assert.equal((await currentCycle()).id, cycle.id);
     const { body: { token } } = await request("/auth/login", {

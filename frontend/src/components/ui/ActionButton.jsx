@@ -1,6 +1,6 @@
 import {
   useTheme,
-} from "../../context/ThemeContext";
+} from "../../context/theme";
 
 function ActionButton({
   children,

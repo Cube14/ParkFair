@@ -1,7 +1,7 @@
 FROM node:24-bookworm-slim
 WORKDIR /app
 RUN chown node:node /app
-ENV NODE_ENV=production PUPPETEER_SKIP_DOWNLOAD=true WHATSAPP_ENABLED=false WHATSAPP_SEND_APPROVED=false
+ENV NODE_ENV=production WHATSAPP_ENABLED=false WHATSAPP_SEND_APPROVED=false
 COPY --chown=node:node package.json package-lock.json ./
 USER node
 RUN npm ci --omit=dev

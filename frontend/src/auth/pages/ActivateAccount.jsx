@@ -102,7 +102,7 @@ function ActivateAccount() {
           "Account activated successfully."
         );
 
-      } catch (err) {
+      } catch {
         toast.error(
           "Activation failed."
         );

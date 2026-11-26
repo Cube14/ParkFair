@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const parkingAssignmentSchema =
   new mongoose.Schema(
     {
+      publicationId: { type: mongoose.Schema.Types.ObjectId, ref: "AllocationPublication" },
+      flatNumber: String, slotNumber: String, slotSide: String, vehicleNumber: String, vehicleType: String,
       cycleId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "ParkingCycle",
@@ -53,6 +55,14 @@ const parkingAssignmentSchema =
       timestamps: true,
     }
   );
+
+parkingAssignmentSchema.index({ publicationId: 1, flatId: 1 }, {
+  unique: true, partialFilterExpression: { publicationId: { $type: "objectId" } },
+});
+parkingAssignmentSchema.index({ publicationId: 1, vehicleId: 1 }, {
+  unique: true, partialFilterExpression: { publicationId: { $type: "objectId" } },
+});
+parkingAssignmentSchema.index({ cycleId: 1, publicationId: 1, assignmentStatus: 1 });
 
 module.exports = mongoose.model(
   "ParkingAssignment",

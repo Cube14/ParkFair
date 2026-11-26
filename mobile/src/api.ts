@@ -50,6 +50,7 @@ export async function api<T>(path: string, options: {
       method: options.body ? 'POST' : 'GET',
       headers: {
         Accept: 'application/json',
+        ...(options.body && { 'X-ParkFair-Session': 'native' }),
         ...(options.body && { 'Content-Type': 'application/json' }),
         ...(options.token && { Authorization: `Bearer ${options.token}` }),
       },

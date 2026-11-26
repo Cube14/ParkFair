@@ -24,6 +24,11 @@ const parkingCycleSchema = new mongoose.Schema(
       required: true,
     },
 
+    latestPublicationId: { type: mongoose.Schema.Types.ObjectId, ref: "AllocationPublication" },
+    activePublicationId: { type: mongoose.Schema.Types.ObjectId, ref: "AllocationPublication" },
+    publicationSequence: Number,
+    legacySupersededAt: Date,
+
     assignmentRevision: { type: Number, select: false },
 
     status: {

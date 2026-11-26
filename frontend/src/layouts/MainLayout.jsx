@@ -5,7 +5,7 @@ import ThemeToggle from "../components/ThemeToggle";
 
 import {
   useTheme,
-} from "../context/ThemeContext";
+} from "../context/theme";
 
 function MainLayout({
   children,

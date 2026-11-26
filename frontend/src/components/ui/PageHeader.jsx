@@ -1,6 +1,6 @@
 import {
   useTheme,
-} from "../../context/ThemeContext";
+} from "../../context/theme";
 
 import {
   getThemeClasses,

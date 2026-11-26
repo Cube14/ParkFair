@@ -24,7 +24,6 @@ console.log("Video:", nightDriveVideo);
 function HeroSection({ data }) {
   const resident = data?.resident;
   const parking = data?.parking;
-  const vehicle = data?.vehicle;
   const cycle = data?.cycle;
 
   const residentName =

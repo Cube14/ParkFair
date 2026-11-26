@@ -19,6 +19,9 @@ function handleError(error, req, res, next) {
              error.type === "entity.parse.failed") {
     status = 400;
     message = "Invalid request data.";
+  } else if (error.type === "encoding.unsupported") {
+    status = 415;
+    message = "Use an uncompressed request body.";
   } else if (error.type === "entity.too.large") {
     status = 413;
     message = "Request body is too large.";

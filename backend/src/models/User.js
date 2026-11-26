@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
 
+    sessionFence: { type: Number, select: false },
     sessionVersion: { type: Number, default: 0, select: false },
 
     mustChangePassword: {

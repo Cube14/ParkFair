@@ -1,5 +1,7 @@
 # Current architecture
 
+Phase 2 continues on the clean Phase 1 commit `df8f030265dd3b0a225b9f86ccb9ddf06e4a03e5`. The repository history below records the original Phase 1 baseline.
+
 ## Repository baseline
 
 The workspace was clean on `frontend-setup` at `64c340152faad02463806125fe4064c121cbece6`. `git ls-remote --heads origin` matched local refs. `main` at `4daedbc` contains README, license and ignore rules. `develop` at `a64e5a2` has an early API spec. `feature/backend-setup` at `b010478` is an earlier UI milestone. Phase 1 work is on local `feature/parkfair-2.0-foundation`.
@@ -43,3 +45,8 @@ Independent npm manifests and lockfiles govern backend, frontend and mobile. The
 - Cycle activation completes previous active cycles and updates the target in a transaction. Concurrent activation of distinct targets with no common prior active cycle can still race. Overlaps are resolved deterministically on reads. A transactional publishing transition and database invariants remain.
 - Flat/vehicle deletion and reassignment check existing references. Independent concurrent relation writes still need a common ownership policy. Clone copies existing data and may carry legacy inconsistencies.
 - Duplicate auth guard components exist. App uses `components/ProtectedRoute.jsx`. The old account-activation mock is not mounted. Review obsolete diagnostics, dead assets and fixtures before removal.
+
+
+## Phase 2 changes
+
+The same Node/Express/MongoDB application owns allocation drafts, immutable revisions, publication snapshots, append-only audit history and an outbox. A single MongoDB write fence coordinates cross-cycle and inventory operations for the one-society deployment. Publication and activation use different cycle pointers. Legacy assignments stay readable and new placements are version-selected. The browser keeps new access tokens in memory and uses an HttpOnly refresh cookie. Native clients restore using a rotating SecureStore refresh credential. The real provider runtime was removed from the API dependency tree. [Allocation architecture](PHASE_2_ALLOCATION.md) | [Sessions](PHASE_2_SESSIONS.md)

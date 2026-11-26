@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ParkFair design proposals</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#19191e;background:#edeef0;line-height:1.4}
+*{box-sizing:border-box}body{margin:0}main{max-width:1280px;margin:auto;padding:32px}
+h1,h2,h3,p{margin:0}h1{font-size:30px}h2{font-size:25px}h3{font-size:16px}.intro{margin:9px 0 24px;color:#4d4e55}
+.proposal{padding:22px;margin-bottom:20px;background:#f4f4f5;border:1px solid #aeb0b7;border-radius:16px}
+.sectionhead{display:flex;justify-content:space-between;align-items:center;gap:12px}.tag{font-size:12px;font-weight:700;color:#474852;text-transform:uppercase}
+.grid{display:grid;gap:18px}.admin{grid-template-columns:1fr 1fr}.resident{grid-template-columns:repeat(3,1fr)}
+article{border-radius:12px;border:1px solid #aeb0b7;background:#fff;overflow:hidden;display:flex;flex-direction:column}
+article>header,article>section{padding:16px}article>header{border-bottom:1px solid #c8c9ce}
+article>header p,.muted{font-size:13px;color:#4d4e55}.browser-head{background:#e7e7ea;display:flex;justify-content:space-between;font-size:13px;padding:12px 16px}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}.steps span, .steps b,.pill{border-radius:4px;padding:4px 7px;background:#eeeef0;font-size:12px}
+.steps b,.button{background:#25262c;color:#fff}.notice,.rowedit{background:#f2f2f5;border:1px solid #bcbec5;border-radius:7px;padding:10px;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #dedee0}
+.action{display:flex;justify-content:flex-end;align-items:center;gap:12px;font-size:13px;margin-top:12px}.button{padding:7px 12px;border-radius:5px}
+.ends{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px}.ends .notice{margin:0}.workbench{display:grid;grid-template-columns:1.3fr 1fr;gap:10px;margin-top:8px}.workbench table{align-self:start}.rowedit{margin:0;font-size:13px}
+.stage{height:180px;border-radius:10px;display:grid;align-content:end;padding:15px;overflow:hidden;position:relative;color:white}
+.poster{background:linear-gradient(165deg,#999ba5 0,#656773 35%,#272831 72%)}.poster:before,.poster:after{content:"";position:absolute;bottom:65px;left:41%;width:4px;height:74px;background:#b9bcc7;transform:rotate(42deg);transform-origin:top}
+.poster:after{left:62%;transform:rotate(-42deg)}.stage h3,.stage p{position:relative;z-index:1}.stage h3{font-size:25px}
+.hud{background:#272831;align-content:center;text-align:center}.dial{margin:0 auto 5px;border:3px double #b7bac5;padding:12px;border-radius:50%;width:84px;height:84px;display:grid;place-content:center}
+.garage{background:#e4e4ea;color:#20212a;align-content:center}.map{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.map span{padding:7px 4px;text-align:center;border:1px solid #9194a1;font-size:12px}.map b{background:#25262c;color:#fff;padding:7px 4px;text-align:center;font-size:12px}
+.tabs{display:flex;justify-content:space-between;gap:6px;padding:10px 0 0;font-size:12px;color:#41434b}
+@media(max-width:830px){main{padding:16px}.admin,.resident,.ends{grid-template-columns:1fr}.proposal{padding:14px}.workbench{grid-template-columns:1fr}.sectionhead{align-items:flex-start;flex-direction:column}}
+</style>
+<main>
+<section class="proposal" id="administrator" aria-label="Administrator concept previews">
+<div class="sectionhead"><h1>Administrator allocation workflow</h1><span class="tag">Proposal v1 · synthetic data</span></div>
+<p class="intro">Both concepts separate approval, publication and activation.</p>
+<div class="grid admin">
+<article>
+<header><h2>A. Guided review</h2><p>One stage at a time, from file selection to approval.</p></header>
+<div class="browser-head"><b>Cycle 12 · 14–20 December</b><span>Revision 3</span></div>
+<section><div class="steps"><span>1 Import</span><b>2 Validate</b><span>3 Review</span><span>4 Approve</span><span>5 Publish</span></div>
+<h3>Correct two rows before review</h3>
+<div class="notice"><b>20 of 22 rows valid</b><br><span class="muted">Open each issue to see the field and a suggested action.</span></div>
+<table><thead><tr><th>Row</th><th>Field</th><th>Issue</th></tr></thead><tbody><tr><td>8</td><td>Slot</td><td>S1 has reached capacity</td></tr><tr><td>14</td><td>Vehicle</td><td>Select a vehicle for this flat</td></tr></tbody></table>
+<div class="action">Replace file <span class="button">Fix first issue</span></div></section>
+</article>
+<article>
+<header><h2>B. Chart workbench</h2><p>Keep the chart visible while correcting individual rows.</p></header>
+<div class="browser-head"><b>Cycle 12 · Revision 3</b><span>Upload replacement</span></div>
+<section><div class="steps"><b>Chart</b><span>Issues 2</span><span>Compare versions</span><span>Approval</span></div>
+<div class="workbench">
+<table><thead><tr><th>Row</th><th>Flat</th><th>Slot</th></tr></thead><tbody><tr><td>7</td><td>004</td><td>S2</td></tr><tr><td><b>8</b></td><td>005</td><td><b>S1 · Full</b></td></tr><tr><td>14</td><td>011</td><td>S8</td></tr></tbody></table>
+<div class="rowedit"><b>Row 8 · Flat 005</b><p class="muted">S1 is full. Choose an available slot.</p><div class="notice">Slot · S3</div><b>Apply row edit</b></div>
+</div><div class="action">Compare revision <span class="button">Review draft</span></div></section>
+</article>
+</div>
+<div class="ends">
+<div class="notice"><h3>Import an allocation chart</h3><p class="muted">Choose an Excel or CSV file for Cycle 12. Preview the column mapping and start a new draft revision.</p><div class="action"><span class="button">Choose file</span></div></div>
+<div class="notice"><h3>Publish approved revision 4</h3><p class="muted">22 assignments for 14&ndash;20 December. Residents keep today's allocation until the new cycle is activated.</p><div class="action">Back to review <span class="button">Publish revision 4</span></div></div>
+</div>
+</section>
+<section class="proposal" id="resident" aria-label="Resident visual exploration previews">
+<div class="sectionhead"><h1>Resident visual exploration</h1><span class="tag">Exploration v1 · synthetic data</span></div>
+<p class="intro">Three approaches to finding today's parking in the same navigation hierarchy.</p>
+<div class="grid resident">
+<article><header><h2>Cinematic luxury</h2><p>Poster-led current parking.</p></header><section><div class="stage poster"><p>Current parking</p><h3>Slot S3</h3><p>Covered · 14–20 December</p></div><div class="tabs"><b>Parking</b><span>Schedule</span><span>Profile</span></div></section></article>
+<article><header><h2>Automotive HUD</h2><p>Instrument-style status hierarchy.</p></header><section><div class="stage hud"><div class="dial"><h3>S3</h3></div><p>Covered · 6 days remaining</p></div><div class="tabs"><b>Parking</b><span>Schedule</span><span>Profile</span></div></section></article>
+<article><header><h2>Digital garage</h2><p>Map and equivalent text details.</p></header><section><div class="stage garage"><div class="map"><span>S1</span><span>S2</span><b>S3</b><span>S4</span><span>S5</span><span>S6</span><span>S7</span><span>S8</span></div><p style="margin-top:12px"><b>Slot S3</b> · Row A</p></div><div class="tabs"><b>Parking</b><span>Schedule</span><span>Profile</span></div></section></article>
+</div>
+</section>
+</main>
+</html>

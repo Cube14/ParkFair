@@ -322,3 +322,8 @@ The algorithm is considered successful if:
 * The system operates automatically.
 * Manual corrections remain rare.
 * Allocation history remains fully auditable.
+
+
+## Phase 2 reconciliation
+
+Published physical parking is the new operational authority. See the [read-only legacy reconciliation and proposed entitlement model](PHASE_2_ALLOCATION.md#legacy-fairness-reconciliation).

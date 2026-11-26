@@ -1,3 +1,4 @@
+const { visibleAssignments } = require("./assignmentVisibility");
 const { setTimeout: delay } = require("node:timers/promises");
 const Flat = require("../models/Flat");
 const ParkingAssignment = require("../models/ParkingAssignment");
@@ -40,7 +41,7 @@ _ParkFair automated notification_`,
 
 async function getNotificationBatch(cycleId, flatNumber) {
   const cycle = await notificationCycle(cycleId);
-  const filter = { cycleId: cycle._id, assignmentStatus: "ACTIVE" };
+  const filter = { ...visibleAssignments(cycle), assignmentStatus: "ACTIVE" };
   if (flatNumber) {
     const flat = await Flat.findOne({ flatNumber });
     if (!flat) throw new ApiError(404, "Flat not found.");

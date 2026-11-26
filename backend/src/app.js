@@ -7,6 +7,7 @@ const app = express();
 app.disable("x-powered-by");
 const origins = (process.env.WEB_ORIGINS ?? "").split(",").map((entry) => entry.trim()).filter(Boolean);
 app.use(cors({
+  credentials: true,
   origin(origin, callback) {
     callback(null, Boolean(origin && origins.includes(origin)));
   },
@@ -24,6 +25,7 @@ app.use("/api/health", require("./routes/healthRoutes"));
 app.use("/api/resident", authenticate, requireRole("RESIDENT"), require("./routes/residentRoutes"));
 
 const adminRoutes = {
+  "allocation-drafts": [require("./routes/allocationDraftRoutes")],
   flats: [require("./routes/flatRoutes")],
   vehicles: [require("./routes/vehicleRoutes")],
   layouts: [require("./routes/layoutRoutes")],

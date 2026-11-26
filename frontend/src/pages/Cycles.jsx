@@ -1,10 +1,9 @@
 
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
 import toast from "react-hot-toast";
 
-import PageHeader from "../components/ui/PageHeader";
 import ActionButton from "../components/ui/ActionButton";
 import StatusBadge from "../components/ui/StatusBadge";
 import Modal from "../components/ui/Modal";
@@ -21,7 +20,7 @@ import {
 
 import {
   useTheme,
-} from "../context/ThemeContext";
+} from "../context/theme";
 
 import {
   getThemeClasses,
@@ -80,11 +79,9 @@ function Cycles() {
   const styles =
     getThemeClasses(theme);
 
-  useEffect(() => {
-    loadCycles();
-  }, []);
 
-  const loadCycles = async () => {
+
+  const loadCycles = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -115,7 +112,13 @@ function Cycles() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadCycles();
+    });
+  }, [loadCycles]);
 
   const createCycle =
     async () => {
@@ -313,7 +316,7 @@ const deleteCycle =
     }
   };
 
-  
+
   if (loading) {
     return (
       <div
@@ -1014,4 +1017,4 @@ const deleteCycle =
   );
 }
 
-export default Cycles;  
+export default Cycles;

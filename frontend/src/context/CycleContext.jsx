@@ -1,11 +1,8 @@
 import {
-  createContext,
-  useContext,
   useState,
 } from "react";
 
-const CycleContext =
-  createContext();
+import { CycleContext } from "./cycle";
 
 export function CycleProvider({
   children,
@@ -24,11 +21,5 @@ export function CycleProvider({
     >
       {children}
     </CycleContext.Provider>
-  );
-}
-
-export function useCycle() {
-  return useContext(
-    CycleContext
   );
 }

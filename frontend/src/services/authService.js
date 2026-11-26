@@ -1,50 +1,12 @@
-import api from "./api";
+import api, { endSession, refreshSession, startSession } from "./api";
 
 const authService = {
-
-  login: async (credentials) => {
-
-    const response =
-      await api.post(
-        "/auth/login",
-        credentials
-      );
-
-    if (response.data.token) {
-
-      localStorage.setItem(
-        "token",
-        response.data.token
-      );
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify(response.data.user)
-      );
-
-    }
-
-    return response.data;
+  login: startSession,
+  async getCurrentUser() {
+    if (localStorage.getItem("token")) return (await api.get("/auth/me")).data.user;
+    return (await refreshSession()).user;
   },
-
-  getCurrentUser: async () => {
-
-    const response =
-      await api.get("/auth/me");
-
-    return response.data.user;
-
-  },
-
-  logout: async () => {
-
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    return true;
-
-  },
-
+  logout: endSession,
 };
 
 export default authService;

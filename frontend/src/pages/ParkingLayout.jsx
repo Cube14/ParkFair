@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 
 import api from "../services/api";
 
-import { useCycle } from "../context/CycleContext";
-import { useTheme } from "../context/ThemeContext";
+import { useCycle } from "../context/cycle";
+import { useTheme } from "../context/theme";
 
 import { getThemeClasses } from "../utils/theme";
 
@@ -13,14 +13,12 @@ import {
   ParkingCircle,
   Gauge,
   Building2,
-  MapPinned,
   Activity,
   CarFront,
 } from "lucide-react";
 
 function ParkingLayout() {
-  const [matrix, setMatrix] = useState(null);
-  const [capacities, setCapacities] = useState({});
+  const [layout, setLayout] = useState(null);
 
   const { selectedCycle } =
     useCycle();
@@ -31,29 +29,21 @@ function ParkingLayout() {
   const styles =
     getThemeClasses(theme);
 
+  const cycleId = selectedCycle?._id;
+
   useEffect(() => {
-    if (selectedCycle) {
-      setMatrix(null);
-      loadLayout();
-    }
-  }, [selectedCycle]);
+    if (!cycleId) return undefined;
+    const controller = new AbortController();
+    api.get(`/cycles/${cycleId}/matrix`, { signal: controller.signal }).then(({ data }) => {
+      setLayout({ cycleId, matrix: data.data, capacities: data.capacity ?? {} });
+    }).catch(() => {
+      if (!controller.signal.aborted) setLayout({ cycleId, matrix: {}, capacities: {} });
+    });
+    return () => controller.abort();
+  }, [cycleId]);
 
-  const loadLayout = async () => {
-    try {
-      const response =
-        await api.get(
-          `/cycles/${selectedCycle._id}/matrix`
-        );
-
-      setCapacities(response.data.capacity ?? {});
-      setMatrix(response.data.data);
-    } catch {
-      console.error("Parking data request failed.");
-
-      setCapacities({});
-      setMatrix({});
-    }
-  };
+  const matrix = layout?.cycleId === cycleId ? layout?.matrix : null;
+  const capacities = layout?.capacities ?? {};
 
   if (!selectedCycle) {
     return (

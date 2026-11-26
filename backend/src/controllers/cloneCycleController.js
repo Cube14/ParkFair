@@ -1,3 +1,4 @@
+const { visibleAssignments } = require("../services/assignmentVisibility");
 const ParkingCycle = require("../models/ParkingCycle");
 const ParkingAssignment = require("../models/ParkingAssignment");
 const { withCycleWrite } = require("../services/assignmentService");
@@ -7,7 +8,7 @@ async function cloneCycle(req, res) {
   const { cycleName, startDate, endDate, durationDays } = req.body;
   const result = await withCycleWrite(cycleId, async (session) => {
     const sourceCycle = await ParkingCycle.findById(cycleId).session(session);
-    const assignments = await ParkingAssignment.find({ cycleId, assignmentStatus: "ACTIVE" }).session(session);
+    const assignments = await ParkingAssignment.find({ ...visibleAssignments(sourceCycle), assignmentStatus: "ACTIVE" }).session(session);
     const [newCycle] = await ParkingCycle.create([
       { cycleName, startDate, endDate, durationDays, status: "PLANNED" },
     ], { session });

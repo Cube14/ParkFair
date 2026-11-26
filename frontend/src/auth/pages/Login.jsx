@@ -21,7 +21,7 @@ import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
 import AuthCard from "../components/AuthCard";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/auth";
 
 function Login() {
   const { login } =

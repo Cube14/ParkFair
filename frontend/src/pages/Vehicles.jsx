@@ -1,10 +1,9 @@
 
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
 import toast from "react-hot-toast";
 
-import PageHeader from "../components/ui/PageHeader";
 import ActionButton from "../components/ui/ActionButton";
 import Modal from "../components/ui/Modal";
 
@@ -15,13 +14,12 @@ import {
   Pencil,
   Trash2,
   CheckCircle2,
-  XCircle,
   Bike,
 } from "lucide-react";
 
 import {
   useTheme,
-} from "../context/ThemeContext";
+} from "../context/theme";
 
 import {
   getThemeClasses,
@@ -62,12 +60,9 @@ function Vehicles() {
   const styles =
     getThemeClasses(theme);
 
-  useEffect(() => {
-    loadVehicles();
-    loadFlats();
-  }, []);
 
-  const loadVehicles = async () => {
+
+  const loadVehicles = useCallback(async () => {
     try {
       const res =
         await api.get(
@@ -77,16 +72,16 @@ function Vehicles() {
       setVehicles(
         res.data.data || []
       );
-    } catch (error) {
+    } catch {
       toast.error(
         "Failed to load vehicles"
       );
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadFlats = async () => {
+  const loadFlats = useCallback(async () => {
     try {
       const res =
         await api.get("/flats");
@@ -101,7 +96,14 @@ function Vehicles() {
         "Failed to load flats"
       );
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadVehicles();
+      void loadFlats();
+    });
+  }, [loadVehicles, loadFlats]);
 
   const openAddModal = () => {
     setEditingVehicle(null);
@@ -225,10 +227,6 @@ function Vehicles() {
       (v) => v.isActive
     ).length;
 
-  const inactiveVehicles =
-    vehicles.filter(
-      (v) => !v.isActive
-    ).length;
 
   const cars =
     vehicles.filter(
@@ -893,4 +891,4 @@ function Vehicles() {
   );
 }
 
-export default Vehicles;	
+export default Vehicles;

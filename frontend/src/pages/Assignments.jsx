@@ -1,9 +1,8 @@
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
 import toast from "react-hot-toast";
 
-import PageHeader from "../components/ui/PageHeader";
 import ActionButton from "../components/ui/ActionButton";
 import Modal from "../components/ui/Modal";
 import StatusBadge from "../components/ui/StatusBadge";
@@ -13,13 +12,12 @@ import {
   Search,
   CarFront,
   ParkingSquare,
-  Building2,
   CircleDot,
 } from "lucide-react";
 
 import {
   useTheme,
-} from "../context/ThemeContext";
+} from "../context/theme";
 
 import {
   getThemeClasses,
@@ -70,13 +68,7 @@ function Assignments() {
   const styles =
     getThemeClasses(theme);
 
-  useEffect(() => {
-    loadAssignments();
-    loadCycles();
-    loadSlots();
-    loadFlats();
-    loadVehicles();
-  }, []);
+
 
   const handleFlatChange = (
     flatId
@@ -97,7 +89,7 @@ function Assignments() {
   };
 
   const loadAssignments =
-    async () => {
+    useCallback(async () => {
       try {
         const res =
           await api.get(
@@ -107,16 +99,16 @@ function Assignments() {
         setAssignments(
           res.data.data
         );
-      } catch (error) {
+      } catch {
         toast.error(
           "Failed to load assignments"
         );
       } finally {
         setLoading(false);
       }
-    };
+    }, []);
 
-  const loadCycles = async () => {
+  const loadCycles = useCallback(async () => {
     try {
       const res =
         await api.get("/cycles");
@@ -124,10 +116,10 @@ function Assignments() {
       setCycles(
         res.data.data
       );
-    } catch {}
-  };
+    } catch { console.error("Parking data request failed."); }
+  }, []);
 
-  const loadSlots = async () => {
+  const loadSlots = useCallback(async () => {
     try {
       const res =
         await api.get("/slots");
@@ -135,20 +127,20 @@ function Assignments() {
       setSlots(
         res.data.data
       );
-    } catch {}
-  };
+    } catch { console.error("Parking data request failed."); }
+  }, []);
 
-  const loadFlats = async () => {
+  const loadFlats = useCallback(async () => {
     try {
       const res =
         await api.get("/flats");
 
       setFlats(res.data);
-    } catch {}
-  };
+    } catch { console.error("Parking data request failed."); }
+  }, []);
 
   const loadVehicles =
-    async () => {
+    useCallback(async () => {
       try {
         const res =
           await api.get(
@@ -158,8 +150,18 @@ function Assignments() {
         setVehicles(
           res.data.data
         );
-      } catch {}
-    };
+      } catch { console.error("Parking data request failed."); }
+    }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadAssignments();
+      void loadCycles();
+      void loadSlots();
+      void loadFlats();
+      void loadVehicles();
+    });
+  }, [loadAssignments, loadCycles, loadSlots, loadFlats, loadVehicles]);
 
   const openCreateModal = () => {
     setEditingAssignment(
@@ -1195,4 +1197,3 @@ function Assignments() {
 }
 
 export default Assignments;
-	

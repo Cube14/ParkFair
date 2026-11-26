@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { motion } from "framer-motion";
 
@@ -21,12 +21,10 @@ function Dashboard() {
   const [error, setError] =
     useState("");
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
+
 
   const loadDashboard =
-    async () => {
+    useCallback(async () => {
       try {
         setLoading(true);
 
@@ -43,7 +41,13 @@ function Dashboard() {
       } finally {
         setLoading(false);
       }
-    };
+    }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadDashboard();
+    });
+  }, [loadDashboard]);
 
   if (loading) {
     return (

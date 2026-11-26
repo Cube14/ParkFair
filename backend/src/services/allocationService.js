@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const { parkingWrite } = require("./parkingWrite");
 const Vehicle = require("../models/Vehicle");
 const Rotation = require("../models/Rotation");
 const Allocation = require("../models/Allocation");
@@ -7,7 +7,7 @@ const { INSIDE_SLOTS, ROTATION_DAYS } = require("../config/parkingConfig");
 const { ApiError } = require("../middleware/apiErrors");
 
 function generateFirstRotation() {
-  return mongoose.connection.transaction(async (session) => {
+  return parkingWrite(async (session) => {
     if (await Rotation.exists({ rotationNumber: 1 }).session(session)) {
       throw new ApiError(409, "Rotation #1 already exists");
     }

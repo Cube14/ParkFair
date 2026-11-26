@@ -1,3 +1,4 @@
+const { visibleAssignments } = require("../services/assignmentVisibility");
 const Flat = require("../models/Flat");
 const Vehicle = require("../models/Vehicle");
 const ParkingAssignment = require("../models/ParkingAssignment");
@@ -11,7 +12,7 @@ exports.getResidentDashboard = async (req, res) => {
   const cycle = await currentCycle();
   const assignment = cycle && await ParkingAssignment.findOne({
     flatId: flat._id,
-    cycleId: cycle._id,
+    ...visibleAssignments(cycle),
     assignmentStatus: "ACTIVE",
   }).sort({ createdAt: 1, _id: 1 }).populate("slotId").populate({
     path: "vehicleId",
@@ -25,11 +26,11 @@ exports.getResidentDashboard = async (req, res) => {
   res.json({
     success: true,
     resident: { name: flat.ownerName, flatNumber: flat.flatNumber },
-    vehicle: vehicle ? { id: vehicle._id, number: vehicle.vehicleNumber, type: vehicle.vehicleType } : null,
+    vehicle: vehicle ? { id: vehicle._id, number: assignment?.vehicleNumber ?? vehicle.vehicleNumber, type: assignment?.vehicleType ?? vehicle.vehicleType } : null,
     parking: assignment ? {
       status: assignment.parkingType,
-      slot: assignment.slotId?.slotNumber || "N/A",
-      side: assignment.slotId?.side || "",
+      slot: assignment.slotNumber ?? assignment.slotId?.slotNumber ?? "N/A",
+      side: assignment.slotSide ?? assignment.slotId?.side ?? "",
     } : null,
     cycle: cycle ? {
       id: cycle._id,

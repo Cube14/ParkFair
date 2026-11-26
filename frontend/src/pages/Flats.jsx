@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../services/api";
 
 import toast from "react-hot-toast";
@@ -12,13 +12,11 @@ import {
   Users,
   Layers3,
   Crown,
-  Phone,
-  Mail,
 } from "lucide-react";
 
 import {
   useTheme,
-} from "../context/ThemeContext";
+} from "../context/theme";
 
 import {
   getThemeClasses,
@@ -49,11 +47,9 @@ function Flats() {
   const { theme } = useTheme();
   const styles = getThemeClasses(theme);
 
-  useEffect(() => {
-    loadFlats();
-  }, []);
 
-  const loadFlats = async () => {
+
+  const loadFlats = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -82,12 +78,18 @@ function Flats() {
           vehicleCount: (vehicleMap[flat._id] || []).length,
         }))
       );
-    } catch (error) {
+    } catch {
       toast.error("Failed to load flats");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadFlats();
+    });
+  }, [loadFlats]);
 
   const openAddModal = () => {
     setEditingFlat(null);
@@ -267,7 +269,6 @@ function Flats() {
     );
   });
 
-  const totalFlats = flats.length;
   const accountsCreated = flats.filter((flat) => flat.account?.exists).length;
   const vehiclesRegistered = flats.reduce((sum, flat) => sum + (flat.vehicleCount || 0), 0);
   const pendingAccounts = flats.filter((flat) => !flat.account?.exists).length;

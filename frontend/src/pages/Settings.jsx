@@ -1,6 +1,5 @@
 
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -22,7 +21,7 @@ import ActionButton from "../components/ui/ActionButton";
 
 import {
   useTheme,
-} from "../context/ThemeContext";
+} from "../context/theme";
 
 import {
   getThemeClasses,
@@ -35,32 +34,15 @@ function Settings() {
   const styles =
     getThemeClasses(theme);
 
-  const [settings, setSettings] =
-    useState({
-      societyName:
-        "ParkFair Society",
-
-      cycleDuration: 15,
-
-      outsideCapacity: 4,
-
-      notificationsEnabled: true,
-
-      contactNumber: "",
-    });
-
-  useEffect(() => {
-    const saved =
-      localStorage.getItem(
-        "parkfair_settings"
-      );
-
-    if (saved) {
-      setSettings(
-        JSON.parse(saved)
-      );
+  const [settings, setSettings] = useState(() => {
+    const defaults = { societyName: "ParkFair Society", cycleDuration: 15,
+      outsideCapacity: 4, notificationsEnabled: true, contactNumber: "" };
+    try {
+      return { ...defaults, ...JSON.parse(localStorage.getItem("parkfair_settings") ?? "null") };
+    } catch {
+      return defaults;
     }
-  }, []);
+  });
 
   const saveSettings = () => {
     localStorage.setItem(

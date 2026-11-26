@@ -383,3 +383,8 @@ Future versions may introduce:
 * MobilePushNotifications
 
 These collections are intentionally excluded from Version 1.
+
+
+## Phase 2 additions
+
+See [allocation and session models and indexes](PHASE_2_MIGRATION.md) for additive schema changes. Existing records are preserved.

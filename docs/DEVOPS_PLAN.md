@@ -1,5 +1,7 @@
 # DevOps plan
 
+For Phase 2, configure exact WEB_ORIGINS for cookie sessions, including Vite proxy use. Use an approved same-site HTTPS origin outside development. The API container no longer contains or initializes a WhatsApp browser runtime. CI enforces web lint, tests the allocation/session workflows and audits all three package trees. Follow the [additive index rollout](PHASE_2_MIGRATION.md) before use in staging or production.
+
 ## Local setup
 
 Use Node 24 and npm. Install with `npm ci` separately under backend, frontend and mobile. Start the dedicated writable MongoDB replica set with `docker compose -f infrastructure/compose.dev.yml up -d --wait`. Its port is bound to loopback and defaults to 27017. Set `PARKFAIR_MONGO_PORT` if an existing service uses that port, and match it in the connection string. Use a separate staging or production deployment with authenticated MongoDB and TLS.
@@ -14,7 +16,7 @@ Copy `backend/.env.example` to `backend/.env.development` and supply a fresh loc
 | --- | --- |
 | API container | The Dockerfile uses a non-root Node 24 runtime, a reproducible lockfile install and readiness probe. Container build skips Puppeteer browser downloads and excludes local sessions and environment files. Boot requires a writable replica set or sharded DB. Verify DB indexes before production, because production Mongoose startup disables auto-creation/indexing. |
 | Environments | Use a distinct local fixture, staging cluster/database and production DB with separate least-privilege users and signing secrets. Review unique indexes on username, cycle name and rotation number plus existing data before rollouts. Prefer one API deployment and HTTPS reverse proxy with a same-origin web build. |
-| CI | Workflow installs from lockfiles, runs the backend tests against MongoDB 8, builds web, and lints/types/exports native code. The known web lint backlog is reported without blocking other jobs. Upgrade to an enforced lint gate once baseline errors are fixed. Adopt audited action pins, dependency and secret scanning before enabling deployment. |
+| CI | Workflow installs from lockfiles, runs the backend tests against MongoDB 8, builds web, and lints/types/exports native code. Web lint is required. Adopt audited action pins, dependency and secret scanning before enabling deployment. |
 | Auditing | Run npm audit across all packages and track exceptions by dependency, use and owner. Quickly patch security updates that preserve behavior. Keep the WhatsApp sender off while its remaining transitive advisories and native/browser setup are unverified. Scan Git history and deployment logs in an authorized incident review if credential exposure is suspected. |
 | Availability | Use `/api/health` for liveness and `/api/health/ready` for database readiness. Track synthetic readiness, API failures and request latency, and use redacted IDs rather than raw bodies, JWTs or contact information. Define alerting and ownership before release. |
 | Backups and rollback | Select encrypted backups and retention based on the society's agreed recovery objectives. Restore into isolated staging, test sample flows with synthetic or authorized data and capture restore times. Retain immutable images, last known release metadata and a backward-compatible DB rollout plan. |

@@ -1,3 +1,4 @@
+const { visibleAssignments } = require("../services/assignmentVisibility");
 const ParkingCycle = require("../models/ParkingCycle");
 const ParkingAssignment = require("../models/ParkingAssignment");
 const ParkingSlot = require("../models/ParkingSlot");
@@ -10,7 +11,7 @@ async function getCycleSummary(req, res) {
   if (!cycle) throw new ApiError(404, "Cycle not found.");
 
   const [assignments, slots] = await Promise.all([
-    ParkingAssignment.find({ cycleId, assignmentStatus: "ACTIVE" }).populate("flatId", "flatNumber"),
+    ParkingAssignment.find({ ...visibleAssignments(cycle), assignmentStatus: "ACTIVE" }).populate("flatId", "flatNumber"),
     ParkingSlot.find({ isActive: true }),
   ]);
   const inside = assignments.filter((assignment) => assignment.parkingType === "INSIDE");

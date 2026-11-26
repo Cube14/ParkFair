@@ -8,7 +8,7 @@ import {
   Moon,
 } from "lucide-react";
 
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/theme";
 
 function ResidentHeader() {
   const { theme, toggleTheme } =

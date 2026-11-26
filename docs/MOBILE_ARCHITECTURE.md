@@ -1,12 +1,14 @@
 # Mobile architecture
 
+Phase 2 uses SecureStore for refresh credentials, rotates them on launch and keeps access tokens in memory. Existing role screens and appearance remain the baseline. On-device auth and secure storage remain unverified. [Session architecture](PHASE_2_SESSIONS.md) | [Design approval register](design/APPROVAL_REGISTER.md)
+
 ## Scaffold in this branch
 
 The independent `mobile/` package uses Expo SDK 58, React Native 0.88, React 19.3, TypeScript and Expo Router. It targets Android and iOS. It includes Expo Dev Client and native system appearance support. The package versions come from the SDK template and `expo install`. React DOM matches the React patch level to satisfy Router's transitive peer constraints. ParkFair web continues to use Vite. [Expo SDK 58 reference](https://docs.expo.dev/versions/v58.0.0/) ? [Expo Router installation](https://docs.expo.dev/router/installation/)
 
 - **Routes** group sign-in, resident parking and admin occupancy. They render real API data with loading, empty and error states. Protected navigation responds to the server-confirmed role. The API enforces authorization independently.
 - **Network** uses an environment-defined, trusted HTTPS base ending in `/api`. No credentials belong in `EXPO_PUBLIC_*`. Each request is bounded, and queries cancel when their scope changes.
-- **Session** stores only the access token in SecureStore, revalidates it with `/auth/me` at launch, and removes local state and queries on sign-out. Invalid or disabled sessions clear the saved token. A failed network check allows retry without immediately deleting a valid token. [Expo SecureStore](https://docs.expo.dev/versions/v58.0.0/sdk/securestore/)
+- **Session** stores only the refresh token in SecureStore, rotates it at launch, keeps the access token in memory and removes local state and queries on sign-out. Invalid or disabled sessions clear the saved token. A failed network check allows retry without immediately deleting a valid token. [Expo SecureStore](https://docs.expo.dev/versions/v58.0.0/sdk/securestore/)
 - **UI** uses semantic light/dark tokens, native safe areas, scalable text, clear focus actions and accessible loading/error labels. The current parking and occupancy screens establish API integration. Use the [resident design map](UI_UX_AUDIT.md) for the full product.
 - **Data** uses TanStack Query for in-memory, account-scoped server state. No API personal data is persisted locally in Phase 1. [TanStack React Query for React Native](https://tanstack.com/query/latest/docs/framework/react/react-native)
 

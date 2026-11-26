@@ -1,3 +1,4 @@
+const { AuthSession } = require("../models/AuthSession");
 const jwt = require("jsonwebtoken");
 const { isObjectIdOrHexString } = require("mongoose");
 const User = require("../models/User");
@@ -27,7 +28,12 @@ async function authenticate(req, res, next) {
   if ((user.sessionVersion ?? 0) !== (claims.version ?? 0)) {
     return res.status(401).json({ success: false, message: "Sign-in required." });
   }
-  req.user = { id: user._id, role: user.role, flatId: user.flatId };
+  if (claims.sid && (!isObjectIdOrHexString(claims.sid) || !await AuthSession.exists({
+    _id: claims.sid, userId: user._id, revokedAt: null, expiresAt: { $gt: new Date() },
+  }))) {
+    return res.status(401).json({ success: false, message: "Sign-in required." });
+  }
+  req.user = { id: user._id, role: user.role, flatId: user.flatId, sessionId: claims.sid };
   next();
 }
 

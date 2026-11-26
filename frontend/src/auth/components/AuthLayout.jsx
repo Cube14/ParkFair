@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/theme";
 import ThemeToggle from "../../components/ThemeToggle";
 import darkBg from "../../resident/assets/backgrounds/dark-parking-bg.jpg";
 import lightBg from "../../resident/assets/backgrounds/light-parking-bg2.jpg";

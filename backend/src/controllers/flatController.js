@@ -1,3 +1,4 @@
+const { parkingWrite } = require("../services/parkingWrite");
 const Allocation = require("../models/Allocation");
 const CreditLedger = require("../models/CreditLedger");
 const { ApiError } = require("../middleware/apiErrors");
@@ -57,9 +58,7 @@ const getAllFlats = async (req, res) => {
 const createFlat = async (req, res) => {
   const { flatNumber } = req.body;
 
-  const existingFlat = await Flat.findOne({
-    flatNumber,
-  });
+  const existingFlat = await Flat.findOne({ flatNumber });
 
   if (existingFlat) {
     return res.status(400).json({
@@ -68,7 +67,10 @@ const createFlat = async (req, res) => {
     });
   }
 
-  const flat = await Flat.create(req.body);
+  const flat = await parkingWrite(async (session) => {
+    const [created] = await Flat.create([req.body], { session });
+    return created;
+  });
 
   res.status(201).json({
     success: true,
@@ -127,58 +129,28 @@ const getFlatHistory = async (req, res) => {
 */
 
 const updateFlat = async (req, res) => {
-  const flat =
-    await Flat.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        returnDocument: "after",
-        runValidators: true,
-      }
-    );
-
-  if (!flat) {
-    return res.status(404).json({
-      success: false,
-      message: "Flat not found",
+  const data = await parkingWrite(async (session) => {
+    const flat = await Flat.findByIdAndUpdate(req.params.id, req.body, {
+      session, returnDocument: "after", runValidators: true,
     });
-  }
-
-  res.status(200).json({
-    success: true,
-    data: flat,
+    if (!flat) throw new ApiError(404, "Flat not found.");
+    return flat;
   });
+  res.json({ success: true, data });
 };
-
-/*
-|--------------------------------------------------------------------------
-| Delete Flat
-|--------------------------------------------------------------------------
-*/
 
 const deleteFlat = async (req, res) => {
   const flatId = req.params.id;
-  const references = await Promise.all([User, Vehicle, ParkingAssignment, Allocation, CreditLedger]
-    .map((model) => model.exists({ flatId })));
-  if (references.some(Boolean)) {
-    throw new ApiError(409, "This flat has linked records. Deactivate it to retain its history.");
-  }
-  const flat =
-    await Flat.findByIdAndDelete(
-      req.params.id
-    );
-
-  if (!flat) {
-    return res.status(404).json({
-      success: false,
-      message: "Flat not found",
-    });
-  }
-
-  res.status(200).json({
-    success: true,
-    message: "Flat deleted",
+  await parkingWrite(async (session) => {
+    for (const source of [User, Vehicle, ParkingAssignment, Allocation, CreditLedger]) {
+      if (await source.exists({ flatId }).session(session)) {
+        throw new ApiError(409, "This flat has linked records. Deactivate it to retain its history.");
+      }
+    }
+    const result = await Flat.deleteOne({ _id: flatId }, { session });
+    if (!result.deletedCount) throw new ApiError(404, "Flat not found.");
   });
+  res.json({ success: true, message: "Flat deleted" });
 };
 
 module.exports = {

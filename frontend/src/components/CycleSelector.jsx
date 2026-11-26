@@ -7,7 +7,7 @@ import api from "../services/api";
 
 import {
   useCycle,
-} from "../context/CycleContext";
+} from "../context/cycle";
 
 function CycleSelector() {
   const {
@@ -19,31 +19,16 @@ function CycleSelector() {
     useState([]);
 
   useEffect(() => {
-    loadCycles();
-  }, []);
-
-  const loadCycles = async () => {
-    try {
-      const res =
-        await api.get("/cycles");
-
-      const cycleData =
-        res.data.data || [];
-
-      setCycles(cycleData);
-
-      if (
-        !selectedCycle &&
-        cycleData.length > 0
-      ) {
-        setSelectedCycle(
-          cycleData[0]
-        );
-      }
-    } catch {
-      console.error("Parking data request failed.");
-    }
-  };
+    const controller = new AbortController();
+    api.get("/cycles", { signal: controller.signal }).then(({ data }) => {
+      const entries = data.data ?? [];
+      setCycles(entries);
+      if (entries.length) setSelectedCycle((current) => current ?? entries[0]);
+    }).catch(() => {
+      if (!controller.signal.aborted) console.error("Parking data request failed.");
+    });
+    return () => controller.abort();
+  }, [setSelectedCycle]);
 
   const handleCycleChange = (
     e

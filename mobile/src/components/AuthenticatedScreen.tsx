@@ -1,18 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
-import { api, ApiError } from '../api';
+import { ApiError } from '../api';
 import { useSession } from '../session';
 import { Action, Copy, Loading, Screen } from './Screen';
 
 export function AuthenticatedScreen<T>({ title, path, children }: {
   title: string; path: string; children: (data: T) => ReactNode;
 }) {
-  const { session, signOut } = useSession();
+  const { session, signOut, read } = useSession();
   const [storageError, setStorageError] = useState(false);
   const result = useQuery({
     queryKey: [session?.user.id, path],
     enabled: Boolean(session),
-    queryFn: ({ signal }) => api<T>(path, { token: session?.token, signal }),
+    queryFn: ({ signal }) => read<T>(path, signal),
   });
   const expired = result.error instanceof ApiError && [401, 403].includes(result.error.status);
 

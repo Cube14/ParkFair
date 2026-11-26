@@ -2,7 +2,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 
-import { useTheme } from "../../context/ThemeContext";
+import { useTheme } from "../../context/theme";
 
 function AuthInput({
   label,

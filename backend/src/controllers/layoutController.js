@@ -1,8 +1,13 @@
+const ParkingCycle = require("../models/ParkingCycle");
+const { visibleAssignments } = require("../services/assignmentVisibility");
+const { ApiError } = require("../middleware/apiErrors");
 const ParkingAssignment = require("../models/ParkingAssignment");
 
 async function getCycleLayout(req, res) {
+  const cycle = await ParkingCycle.findById(req.params.cycleId);
+  if (!cycle) throw new ApiError(404, "Cycle not found.");
   const assignments = await ParkingAssignment.find({
-    cycleId: req.params.cycleId,
+    ...visibleAssignments(cycle),
     assignmentStatus: "ACTIVE",
   }).populate("slotId", "slotNumber").populate("flatId", "flatNumber");
 

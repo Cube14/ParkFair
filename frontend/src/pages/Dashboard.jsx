@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import api from "../services/api";
@@ -22,7 +22,7 @@ import {
 
 import {
   useTheme,
-} from "../context/ThemeContext";
+} from "../context/theme";
 
 import {
   getThemeClasses,
@@ -38,12 +38,10 @@ function Dashboard() {
   const styles =
     getThemeClasses(theme);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
+
 
   const loadDashboard =
-    async () => {
+    useCallback(async () => {
       try {
         const res =
           await api.get(
@@ -53,12 +51,18 @@ function Dashboard() {
         setStats(
           res.data.data
         );
-      } catch (error) {
+      } catch {
         toast.error(
           "Failed to load dashboard"
         );
       }
-    };
+    }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      void loadDashboard();
+    });
+  }, [loadDashboard]);
 
   if (!stats) {
     return (

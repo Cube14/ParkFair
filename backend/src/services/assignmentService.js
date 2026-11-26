@@ -1,4 +1,5 @@
-const mongoose = require("mongoose");
+const { parkingWrite } = require("./parkingWrite");
+const { AllocationDraft } = require("../models/AllocationWorkflow");
 const ParkingCycle = require("../models/ParkingCycle");
 const ParkingAssignment = require("../models/ParkingAssignment");
 const ParkingSlot = require("../models/ParkingSlot");
@@ -16,10 +17,18 @@ async function lockCycle(cycleId, session) {
 }
 
 function withCycleWrite(cycleId, operation) {
-  return mongoose.connection.transaction(async (session) => {
+  return parkingWrite(async (session) => {
     await lockCycle(cycleId, session);
     return operation(session);
   });
+}
+
+async function requireLegacyStaging(cycleId, session) {
+  const cycle = await ParkingCycle.findById(cycleId).session(session);
+  if (cycle?.status !== "PLANNED" || cycle.latestPublicationId ||
+      await AllocationDraft.exists({ cycleId }).session(session)) {
+    throw new ApiError(409, "Edit an allocation draft and publish it to change effective parking.");
+  }
 }
 
 async function checkAssignment(cycleId, slot, flatId, session, excludedId) {
@@ -48,6 +57,7 @@ async function insertAssignment({ cycleId, flatId, vehicleId, slot, notes }, ses
 
 function createSingle({ cycleId, slotId, flatId, vehicleId, notes }) {
   return withCycleWrite(cycleId, async (session) => {
+    await requireLegacyStaging(cycleId, session);
     const slot = await ParkingSlot.findById(slotId).session(session);
     const flat = await Flat.findById(flatId).session(session);
     if (!flat || flat.isActive === false) throw new ApiError(404, "Active flat not found.");
@@ -59,6 +69,7 @@ function createSingle({ cycleId, slotId, flatId, vehicleId, notes }) {
 
 function createBulk(cycleId, items) {
   return withCycleWrite(cycleId, async (session) => {
+    await requireLegacyStaging(cycleId, session);
     const assignments = [];
     for (const item of items) {
       const slot = await ParkingSlot.findOne({ slotNumber: item.slotNumber }).session(session);
@@ -79,6 +90,7 @@ async function updateSlot(assignmentId, slotId) {
   const existing = await ParkingAssignment.findById(assignmentId).select("cycleId");
   if (!existing) throw new ApiError(404, "Assignment not found.");
   return withCycleWrite(existing.cycleId, async (session) => {
+    await requireLegacyStaging(existing.cycleId, session);
     const assignment = await ParkingAssignment.findById(assignmentId).session(session);
     if (!assignment) throw new ApiError(404, "Assignment not found.");
     const slot = await ParkingSlot.findById(slotId).session(session);
@@ -92,4 +104,4 @@ async function updateSlot(assignmentId, slotId) {
   });
 }
 
-module.exports = { withCycleWrite, parkingTypeFor, createSingle, createBulk, updateSlot };
+module.exports = { withCycleWrite, requireLegacyStaging, parkingTypeFor, createSingle, createBulk, updateSlot };

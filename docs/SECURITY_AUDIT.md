@@ -1,5 +1,11 @@
 # Security audit
 
+## Phase 2 controls
+
+The API uses 15-minute JWTs and rotating, hashed refresh sessions. Replay revokes the whole family, and account revocation and audit writes commit together. Web refresh requires a Secure, HttpOnly, SameSite=Strict cookie, an explicit header and exact approved Origin. The browser keeps new access tokens in memory. Native uses SecureStore, with verification pending on hardware. Uploads have MIME, ZIP, XML and row limits. Immutable placements, transactional writes and explicit activation protect effective resident data. Real sends are disabled at the service boundary and provider dependencies were removed from the API. [Session details](PHASE_2_SESSIONS.md) | [Import and outbox limits](PHASE_2_ALLOCATION.md)
+
+The Phase 1 sections below retain the historical findings and Atlas owner procedure.
+
 ## Baseline findings and Phase 1 controls
 
 | Confirmed issue | Phase 1 response |
