@@ -1,25 +1,9 @@
 # ParkFair
 
-Fair Parking. Transparent Allocation.
+ParkFair manages residential parking cycles, physical assignments and resident access. The web application and the Expo mobile scaffold use the same Express/MongoDB API.
 
-A parking allocation management platform designed for residential societies.
+## Local development
 
-## Features
+Use Node 24 and run `npm ci` in each package you need. Start the isolated replica set with `docker compose -f infrastructure/compose.dev.yml up -d --wait`. Copy `backend/.env.example` to `backend/.env.development` and set a development-only JWT secret of at least 32 bytes. Start the API with `npm run dev --prefix backend` and the web app with `npm run dev --prefix frontend`.
 
-- Fair parking rotation
-- Credit-based allocation correction
-- Resident dashboard
-- Admin management
-- WhatsApp notifications
-- Allocation analytics
-
-## Tech Stack
-
-- React
-- Node.js
-- Express.js
-- MongoDB
-
-## Status
-
-Planning Phase
+See [DevOps setup](docs/DEVOPS_PLAN.md) for configuration and fixture tests, [mobile setup](mobile/README.md) for Expo, and [development status](docs/DEVELOPMENT_STATUS.md) for verification and remaining work.

@@ -10,7 +10,13 @@ import {
 
 import luxuryCarVideo from "../../assets/backgrounds/luxury car still red color.mp4";
 
-function VehicleCard() {
+const vehicleTypes = { CAR: "Car", BIKE: "Bike", OTHER: "Other vehicle" };
+
+function VehicleCard({ data }) {
+  const { vehicle, parking, cycle } = data ?? {};
+  const parkingLabel = parking?.status === "OUTSIDE"
+    ? "Outside parking"
+    : parking ? `Slot ${parking.slot}` : "Unassigned";
   return (
     <motion.section
       initial={{
@@ -167,7 +173,7 @@ function VehicleCard() {
                   text-emerald-400
                 "
               >
-                Verified Vehicle
+                {vehicle ? "Registered vehicle" : "Vehicle information"}
               </span>
             </motion.div>
 
@@ -194,7 +200,7 @@ function VehicleCard() {
                 tracking-tight
               "
             >
-              Mercedes
+              Resident
               <br />
 
               <span
@@ -202,7 +208,7 @@ function VehicleCard() {
                   text-red-400
                 "
               >
-                AMG GT
+                {vehicleTypes[vehicle?.type] ?? "Vehicle"}
               </span>
             </motion.h2>
 
@@ -217,10 +223,9 @@ function VehicleCard() {
                 text-lg
               "
             >
-              Registered resident
-              vehicle with active
-              parking allocation and
-              verified ownership.
+              {vehicle
+                ? "Vehicle registered to your flat."
+                : "Ask your society administrator to add your vehicle."}
             </p>
           </div>
 
@@ -286,7 +291,7 @@ function VehicleCard() {
                     font-bold
                   "
                 >
-                  RJ14AB1234
+                  {vehicle?.number ?? "Not registered"}
                 </h3>
               </div>
 
@@ -332,7 +337,7 @@ function VehicleCard() {
                     text-emerald-400
                   "
                 >
-                  Active
+                  {parking ? "Assigned" : "Unassigned"}
                 </h3>
               </div>
 
@@ -365,7 +370,7 @@ function VehicleCard() {
                     text-sm
                   "
                 >
-                  Insurance
+                  Parking
                 </p>
 
                 <h3
@@ -376,7 +381,7 @@ function VehicleCard() {
                     font-bold
                   "
                 >
-                  Valid
+                  {parkingLabel}
                 </h3>
               </div>
 
@@ -409,7 +414,7 @@ function VehicleCard() {
                     text-sm
                   "
                 >
-                  Ownership
+                  Cycle
                 </p>
 
                 <h3
@@ -420,7 +425,7 @@ function VehicleCard() {
                     font-bold
                   "
                 >
-                  Verified
+                  {cycle?.name ?? "No active cycle"}
                 </h3>
               </div>
             </div>

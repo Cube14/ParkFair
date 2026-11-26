@@ -1,114 +1,33 @@
-const ParkingCycle = require(
-  "../models/ParkingCycle"
-);
+const ParkingCycle = require("../models/ParkingCycle");
+const ParkingAssignment = require("../models/ParkingAssignment");
+const ParkingSlot = require("../models/ParkingSlot");
+const { ApiError } = require("../middleware/apiErrors");
+const { parkingTypeFor } = require("../services/assignmentService");
 
-const ParkingAssignment = require(
-  "../models/ParkingAssignment"
-);
+async function getCycleSummary(req, res) {
+  const cycleId = req.params.cycleId;
+  const cycle = await ParkingCycle.findById(cycleId);
+  if (!cycle) throw new ApiError(404, "Cycle not found.");
 
-const getCycleSummary = async (
-  req,
-  res
-) => {
-  try {
-    const { cycleId } = req.params;
+  const [assignments, slots] = await Promise.all([
+    ParkingAssignment.find({ cycleId, assignmentStatus: "ACTIVE" }).populate("flatId", "flatNumber"),
+    ParkingSlot.find({ isActive: true }),
+  ]);
+  const inside = assignments.filter((assignment) => assignment.parkingType === "INSIDE");
+  const outside = assignments.filter((assignment) => assignment.parkingType === "OUTSIDE");
+  const capacity = slots.reduce((sum, slot) => parkingTypeFor(slot) === "INSIDE"
+    ? sum + slot.maxCapacity : sum, 0);
+  const flatNumbers = (group) => group.flatMap((assignment) => assignment.flatId ? [assignment.flatId.flatNumber] : []);
 
-    const cycle =
-      await ParkingCycle.findById(
-        cycleId
-      );
+  res.json({
+    success: true,
+    data: {
+      cycleName: cycle.cycleName, startDate: cycle.startDate, endDate: cycle.endDate, status: cycle.status,
+      totalAssignments: assignments.length, insideCount: inside.length, outsideCount: outside.length,
+      occupancyPercentage: (capacity ? inside.length / capacity * 100 : 0).toFixed(2),
+      insideFlats: flatNumbers(inside), outsideFlats: flatNumbers(outside),
+    },
+  });
+}
 
-    if (!cycle) {
-      return res.status(404).json({
-        success: false,
-        message: "Cycle not found",
-      });
-    }
-
-    const assignments =
-      await ParkingAssignment.find({
-        cycleId,
-        assignmentStatus: "ACTIVE",
-      })
-        .populate(
-          "flatId",
-          "flatNumber"
-        )
-        .populate(
-          "slotId",
-          "slotNumber"
-        );
-
-    const insideFlats = [];
-    const outsideFlats = [];
-
-    assignments.forEach(
-      (assignment) => {
-        if (
-          assignment.parkingType ===
-          "INSIDE"
-        ) {
-          insideFlats.push(
-            assignment.flatId.flatNumber
-          );
-        } else {
-          outsideFlats.push(
-            assignment.flatId.flatNumber
-          );
-        }
-      }
-    );
-
-    const totalAssignments =
-      assignments.length;
-
-    const insideCount =
-      insideFlats.length;
-
-    const outsideCount =
-      outsideFlats.length;
-
-    const occupancyPercentage =
-      ((insideCount / 8) * 100).toFixed(
-        2
-      );
-
-    res.status(200).json({
-      success: true,
-
-      data: {
-        cycleName:
-          cycle.cycleName,
-
-        startDate:
-          cycle.startDate,
-
-        endDate:
-          cycle.endDate,
-
-        status: cycle.status,
-
-        totalAssignments,
-
-        insideCount,
-
-        outsideCount,
-
-        occupancyPercentage,
-
-        insideFlats,
-
-        outsideFlats,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-module.exports = {
-  getCycleSummary,
-};
+module.exports = { getCycleSummary };

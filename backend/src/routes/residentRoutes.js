@@ -1,17 +1,4 @@
-const express = require("express");
-
-const router = express.Router();
-
-const authMiddleware = require("../middleware/authMiddleware");
-
-const {
-  getResidentDashboard,
-} = require("../controllers/residentController");
-
-router.get(
-  "/dashboard",
-  authMiddleware,
-  getResidentDashboard
-);
-
+const router = require("express").Router();
+const { getResidentDashboard } = require("../controllers/residentController");
+router.get("/dashboard", getResidentDashboard);
 module.exports = router;

@@ -1,296 +1,103 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const { isObjectIdOrHexString } = require("mongoose");
 const Flat = require("../models/Flat");
 const User = require("../models/User");
+const { ApiError } = require("../middleware/apiErrors");
 
-/*
-|--------------------------------------------------------------------------
-| Login
-|--------------------------------------------------------------------------
-*/
+const dummyHash = bcrypt.hashSync("parkfair-login-timing-placeholder", 10);
+
+function validPassword(password, minimum = 1) {
+  return typeof password === "string" &&
+    password.length >= minimum && Buffer.byteLength(password, "utf8") <= 72;
+}
+
+function publicUser(user) {
+  return {
+    id: user._id,
+    _id: user._id,
+    username: user.username,
+    role: user.role,
+    flat: user.flatId,
+    flatId: user.flatId,
+    isActive: user.isActive !== false,
+  };
+}
 
 exports.login = async (req, res) => {
-  try {
-    const { identifier, password } = req.body;
-
-    console.log("\n========== LOGIN ==========");
-    console.log("Identifier:", identifier);
-
-    let user = await User.findOne({
-      username: identifier,
-    }).populate("flatId");
-
-    // Login using Flat Number
-    if (!user) {
-      const flat = await Flat.findOne({
-        flatNumber: identifier,
-      });
-
-      if (flat) {
-        user = await User.findOne({
-          flatId: flat._id,
-        }).populate("flatId");
-      }
-    }
-
-    if (!user) {
-      console.log("❌ User not found");
-
-      return res.status(401).json({
-        success: false,
-        message: "Invalid username or password.",
-      });
-    }
-
-    console.log("User:", user.username);
-
-    // Disabled account
-    if (user.isActive === false) {
-      console.log("❌ User disabled");
-
-      return res.status(403).json({
-        success: false,
-        message:
-          "Your account has been disabled.",
-      });
-    }
-
-    console.log("Stored Hash:");
-    console.log(user.password);
-
-    const passwordMatch =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
-
-    console.log(
-      "Password Match:",
-      passwordMatch
-    );
-
-    if (!passwordMatch) {
-      return res.status(401).json({
-        success: false,
-        message:
-          "Invalid username or password.",
-      });
-    }
-
-    console.log("✅ Login Success");
-
-    const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
-
-    return res.json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        role: user.role,
-        flat: user.flatId,
-      },
-    });
-
-  } catch (err) {
-    console.error(err);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+  const { identifier, password } = req.body ?? {};
+  if (typeof identifier !== "string" || !identifier.trim() ||
+      identifier.length > 128 || (typeof password !== "string" || !password || password.length > 1024)) {
+    throw new ApiError(400, "Enter a valid username or flat number and password.");
   }
-};
 
-/*
-|--------------------------------------------------------------------------
-| Current User
-|--------------------------------------------------------------------------
-*/
+  const username = identifier.trim();
+  let user = await User.findOne({ username }).select("+password +sessionVersion")
+    .populate("flatId", "flatNumber ownerName");
+  if (!user) {
+    const flat = await Flat.findOne({ flatNumber: username }).select("_id");
+    if (flat) {
+      user = await User.findOne({ flatId: flat._id, role: "RESIDENT" })
+        .select("+password +sessionVersion").populate("flatId", "flatNumber ownerName");
+    }
+  }
+
+  const matches = await bcrypt.compare(password, user?.password ?? dummyHash);
+  if (!user || !matches) throw new ApiError(401, "Invalid username or password.");
+  if (user.isActive === false) throw new ApiError(403, "Your account has been disabled.");
+
+  const token = jwt.sign({ id: user._id, role: user.role, version: user.sessionVersion ?? 0 }, process.env.JWT_SECRET, {
+    algorithm: "HS256",
+    expiresIn: "1h",
+  });
+  res.json({ success: true, token, user: publicUser(user) });
+};
 
 exports.me = async (req, res) => {
-  try {
-    const user = await User.findById(
-      req.user.id
-    )
-      .populate("flatId")
-      .select("-password");
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    return res.json({
-      success: true,
-      user,
-    });
-
-  } catch (err) {
-    console.error(err);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
-  }
+  const user = await User.findById(req.user.id).populate("flatId", "flatNumber ownerName");
+  if (!user) throw new ApiError(404, "User not found.");
+  res.json({ success: true, user: publicUser(user) });
 };
 
-/*
-|--------------------------------------------------------------------------
-| Create Resident
-|--------------------------------------------------------------------------
-*/
+exports.createResidentAccount = async (req, res) => {
+  const { flatId, password } = req.body ?? {};
+  if (!isObjectIdOrHexString(flatId) || !validPassword(password, 8)) {
+    throw new ApiError(400, "Provide a valid flat and a password of at least 8 characters and at most 72 bytes.");
+  }
+  const flat = await Flat.findById(flatId);
+  if (!flat) throw new ApiError(404, "Flat not found.");
+  if (await User.exists({ flatId })) throw new ApiError(409, "Resident account already exists.");
 
-exports.createResidentAccount =
-  async (req, res) => {
-    try {
-      const {
-        flatId,
-        password,
-      } = req.body;
+  const user = await User.create({
+    username: flat.flatNumber,
+    password: await bcrypt.hash(password, 10),
+    role: "RESIDENT",
+    flatId,
+  });
+  res.status(201).json({ success: true, user: publicUser(user) });
+};
 
-      const flat =
-        await Flat.findById(flatId);
+exports.resetResidentPassword = async (req, res) => {
+  const { password } = req.body ?? {};
+  if (!validPassword(password, 8)) {
+    throw new ApiError(400, "Use a password of at least 8 characters and at most 72 bytes.");
+  }
+  const user = await User.findOne({ _id: req.params.id, role: "RESIDENT" });
+  if (!user) throw new ApiError(404, "Resident account not found.");
+  await User.updateOne({ _id: user._id }, {
+    $set: { password: await bcrypt.hash(password, 10) },
+    $inc: { sessionVersion: 1 },
+  });
+  res.json({ success: true });
+};
 
-      if (!flat) {
-        return res.status(404).json({
-          success: false,
-          message: "Flat not found",
-        });
-      }
-
-      const exists =
-        await User.findOne({
-          flatId,
-        });
-
-      if (exists) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Resident account already exists.",
-        });
-      }
-
-      const hash =
-        await bcrypt.hash(
-          password,
-          10
-        );
-
-      const user =
-        await User.create({
-          username:
-            flat.flatNumber,
-          password: hash,
-          role: "RESIDENT",
-          flatId,
-        });
-
-      return res.status(201).json({
-        success: true,
-        user,
-      });
-
-    } catch (err) {
-      console.error(err);
-
-      return res.status(500).json({
-        success: false,
-      });
-    }
-  };
-
-/*
-|--------------------------------------------------------------------------
-| Reset Password
-|--------------------------------------------------------------------------
-*/
-
-exports.resetResidentPassword =
-  async (req, res) => {
-    try {
-      const user =
-        await User.findById(
-          req.params.id
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-        });
-      }
-
-      user.password =
-        await bcrypt.hash(
-          req.body.password,
-          10
-        );
-
-      await user.save();
-
-      return res.json({
-        success: true,
-      });
-
-    } catch (err) {
-      console.error(err);
-
-      return res.status(500).json({
-        success: false,
-      });
-    }
-  };
-
-/*
-|--------------------------------------------------------------------------
-| Toggle Resident
-|--------------------------------------------------------------------------
-*/
-
-exports.toggleResidentStatus =
-  async (req, res) => {
-    try {
-      const user =
-        await User.findById(
-          req.params.id
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-        });
-      }
-
-      user.isActive =
-        !user.isActive;
-
-      await user.save();
-
-      return res.json({
-        success: true,
-        isActive:
-          user.isActive,
-      });
-
-    } catch (err) {
-      console.error(err);
-
-      return res.status(500).json({
-        success: false,
-      });
-    }
-  };
+exports.toggleResidentStatus = async (req, res) => {
+  const user = await User.findOneAndUpdate(
+    { _id: req.params.id, role: "RESIDENT" },
+    [{ $set: { isActive: { $eq: ["$isActive", false] },
+      sessionVersion: { $add: [{ $ifNull: ["$sessionVersion", 0] }, 1] } } }],
+    { returnDocument: "after", updatePipeline: true }
+  );
+  if (!user) throw new ApiError(404, "Resident account not found.");
+  res.json({ success: true, isActive: user.isActive });
+};

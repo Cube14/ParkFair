@@ -1,136 +1,48 @@
-const {
-  Client,
-  LocalAuth,
-} = require("whatsapp-web.js");
+const path = require("node:path");
+const { ApiError } = require("../middleware/apiErrors");
 
-const qrcode = require("qrcode-terminal");
-const path = require("path");
+let client;
+let initialization;
+let ready = false;
+const canSend = () => process.env.WHATSAPP_ENABLED === "true" &&
+  process.env.WHATSAPP_SEND_APPROVED === "true" && process.env.NODE_ENV === "production";
 
-const client = new Client({
-  authStrategy: new LocalAuth({
-    dataPath: path.join(
-      __dirname,
-      "../sessions"
-    ),
-  }),
-
-  puppeteer: {
-    headless: true,
-
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-    ],
-  },
-});
-
-// No ready flag needed
-
-client.on("qr", (qr) => {
-  console.log(
-    "\n===================================="
-  );
-
-  console.log(
-    "Scan this QR with WhatsApp"
-  );
-
-  console.log(
-    "====================================\n"
-  );
-
-  qrcode.generate(qr, {
-    small: true,
-  });
-});
-
-client.on("authenticated",  () => {
-  console.log("✅ WhatsApp Authenticated");
-
-  setTimeout(async () => {
-    try {
-      console.log("State:", await client.getState());
-      
-      console.log("Info:", client.info);
-    } catch (err) {
-      console.error(err);
-    }
-  }, 5000);
-});
-
-client.on("ready", async () => {
-  
-
-  console.log(
-    "🚀 WhatsApp Client Ready"
-  );
-  const info = await client.getState();
-  console.log("STATE: ", info);
-});
-client.on("loading_screen", (percent, message) => {
-  console.log(percent, message);
-});
-client.on(
-  "auth_failure",
-  (msg) => {
-    console.error(
-      "Authentication Failed",
-      msg
-    );
-  }
-);
-
-client.on(
-  "disconnected",
-  (reason) => {
-    
-
-    console.log(
-      "WhatsApp Disconnected",
-      reason
-    );
-  }
-);
-
-client.initialize();
-
-async function sendMessage(
-  phone,
-  message
-) {
-  if (process.env.WHATSAPP_ENABLED !== "true") {
-      console.log("\n========== WHATSAPP DISABLED ==========");
-      console.log("TO:", phone);
-      console.log(message);
-      console.log("=======================================\n");
-      return;
-  }
-  const state = await client.getState();
-  if (state !== "CONNECTED") {
-    throw new Error(
-        "WhatsApp client is not connected."
-    );
-  }
-
-  let number = phone.replace(/\D/g, "");
-
-  if (!number.startsWith("91")) {
-    number = "91" + number;
-    }
-
-  const chatId = number + "@c.us";
-
-  const registered =
-    await client.isRegisteredUser(chatId);
-  if (!registered) {
-    throw new Error(
-        `WhatsApp is not registered for ${number}.`
-    );
-  }
-  return await client.sendMessage(chatId, message);
+function requireSendingEnabled(req, res, next) {
+  if (!canSend()) throw new ApiError(503, "WhatsApp sending is disabled.");
+  next();
 }
 
-module.exports = {
-  client,
-  sendMessage,
-};
+function getClient() {
+  if (!initialization) {
+    const { Client, LocalAuth } = require("whatsapp-web.js");
+    client = new Client({
+      authStrategy: new LocalAuth({ dataPath: path.join(__dirname, "../sessions") }),
+      puppeteer: { headless: true },
+    });
+    client.on("ready", () => { ready = true; });
+    client.on("disconnected", () => { ready = false; });
+    client.on("auth_failure", () => { ready = false; });
+    initialization = client.initialize().catch(async () => {
+      await client.destroy().catch(() => {});
+      ready = false;
+      initialization = undefined;
+      throw new ApiError(503, "WhatsApp could not initialize.");
+    });
+  }
+  return initialization;
+}
+
+async function sendMessage(phone, message) {
+  if (!canSend()) throw new ApiError(503, "WhatsApp sending is disabled.");
+  const digits = typeof phone === "string" ? phone.replace(/\D/g, "") : "";
+  const number = digits.length === 10 ? `91${digits}` : digits;
+  if (!/^91\d{10}$/.test(number)) throw new ApiError(400, "A valid Indian phone number is required.");
+
+  await getClient();
+  if (!ready) throw new ApiError(503, "WhatsApp session is not ready.");
+  const chat = `${number}@c.us`;
+  if (!await client.isRegisteredUser(chat)) throw new ApiError(422, "WhatsApp recipient is unavailable.");
+  await client.sendMessage(chat, message);
+}
+
+module.exports = { requireSendingEnabled, sendMessage };

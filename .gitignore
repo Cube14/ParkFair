@@ -13,3 +13,8 @@ coverage/
 *.log
 # WhatsApp Session
 backend/src/sessions/
+.wwebjs_cache/
+.wwebjs_auth/
+.expo/
+.env.*
+!.env.example

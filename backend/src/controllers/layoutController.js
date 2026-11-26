@@ -1,79 +1,22 @@
-// layoutController.js
+const ParkingAssignment = require("../models/ParkingAssignment");
 
-const ParkingAssignment = require(
-  "../models/ParkingAssignment"
-);
+async function getCycleLayout(req, res) {
+  const assignments = await ParkingAssignment.find({
+    cycleId: req.params.cycleId,
+    assignmentStatus: "ACTIVE",
+  }).populate("slotId", "slotNumber").populate("flatId", "flatNumber");
 
-const getCycleLayout = async (
-  req,
-  res
-) => {
-  try {
-    const { cycleId } = req.params;
-
-    const assignments =
-      await ParkingAssignment.find({
-        cycleId,
-        assignmentStatus: "ACTIVE",
-      })
-        .populate(
-          "slotId",
-          "slotNumber"
-        )
-        .populate(
-          "flatId",
-          "flatNumber"
-        );
-
-    const layout = {
-      slots: {
-        1: [],
-        2: [],
-        3: [],
-        4: [],
-        5: [],
-        6: [],
-        7: [],
-        8: [],
-      },
-
-      outside: [],
-    };
-
-    assignments.forEach(
-      (assignment) => {
-        const slotNumber =
-          assignment.slotId.slotNumber;
-
-        const flatNumber =
-          assignment.flatId.flatNumber;
-
-        if (
-          slotNumber === "OUTSIDE"
-        ) {
-          layout.outside.push(
-            flatNumber
-          );
-        } else {
-          layout.slots[
-            slotNumber
-          ].push(flatNumber);
-        }
-      }
-    );
-
-    res.status(200).json({
-      success: true,
-      data: layout,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+  const slots = new Map(Array.from({ length: 8 }, (_, i) => [String(i + 1), []]));
+  const outside = [];
+  for (const { slotId: slot, flatId: flat, parkingType } of assignments) {
+    if (!slot || !flat) continue;
+    if (parkingType === "OUTSIDE" || slot.slotNumber === "OUTSIDE") {
+      outside.push(flat.flatNumber);
+    } else {
+      if (!slots.has(slot.slotNumber)) slots.set(slot.slotNumber, []);
+      slots.get(slot.slotNumber).push(flat.flatNumber);
+    }
   }
-};
-
-module.exports = {
-  getCycleLayout,
-};
+  res.json({ success: true, data: { slots: Object.fromEntries(slots), outside } });
+}
+module.exports = { getCycleLayout };

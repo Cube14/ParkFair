@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "ParkFair",
+    "slug": "parkfair",
+    "version": "0.1.0",
+    "scheme": "parkfair",
+    "platforms": ["android", "ios"],
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", "expo-secure-store"],
+    "ios": {
+      "bundleIdentifier": "com.cube14.parkfair",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.cube14.parkfair",
+      "predictiveBackGestureEnabled": true
+    }
+  }
+}

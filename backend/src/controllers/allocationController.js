@@ -1,24 +1,7 @@
-const {
-  generateFirstRotation,
-} = require("../services/allocationService");
+const { generateFirstRotation } = require("../services/allocationService");
 
-const generateRotation = async (req, res) => {
-  try {
-    const result =
-      await generateFirstRotation();
+async function generateRotation(req, res) {
+  res.status(201).json({ success: true, data: await generateFirstRotation() });
+}
 
-    res.status(201).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-module.exports = {
-  generateRotation,
-};
+module.exports = { generateRotation };

@@ -5,6 +5,7 @@ const express = require(
 const router =
   express.Router();
 
+const { validateIds } = require("../middleware/validateRequest");
 const {
   getCycleMatrix,
 } = require(
@@ -13,6 +14,7 @@ const {
 
 router.get(
   "/:cycleId/matrix",
+  validateIds("cycleId"),
   getCycleMatrix
 );
 

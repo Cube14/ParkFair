@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
+      select: false,
       required: true,
     },
 
@@ -31,6 +32,8 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
 
+    sessionVersion: { type: Number, default: 0, select: false },
+
     mustChangePassword: {
       type: Boolean,
       default: false,
@@ -38,6 +41,7 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { transform: (doc, value) => { delete value.password; delete value.sessionVersion; } },
   }
 );
 

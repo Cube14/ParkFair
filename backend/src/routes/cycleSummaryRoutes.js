@@ -1,4 +1,3 @@
-console.log("Cycle Summary Routes Loaded");
 const express = require(
   "express"
 );
@@ -6,6 +5,7 @@ const express = require(
 const router =
   express.Router();
 
+const { validateIds } = require("../middleware/validateRequest");
 const {
   getCycleSummary,
 } = require(
@@ -14,6 +14,7 @@ const {
 
 router.get(
   "/:cycleId/summary",
+  validateIds("cycleId"),
   getCycleSummary
 );
 

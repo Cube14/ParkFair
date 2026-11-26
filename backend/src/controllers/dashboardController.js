@@ -3,140 +3,41 @@ const Vehicle = require("../models/Vehicle");
 const ParkingSlot = require("../models/ParkingSlot");
 const ParkingCycle = require("../models/ParkingCycle");
 const ParkingAssignment = require("../models/ParkingAssignment");
+const { currentCycle } = require("../services/cycleSelection");
 
-const getDashboardData = async (
-  req,
-  res
-) => {
-  try {
-    const totalFlats =
-      await Flat.countDocuments();
+async function getDashboardData(req, res) {
+  const [totalFlats, totalVehicles, slots, totalCycles, activeCycle, recentAssignments] = await Promise.all([
+    Flat.countDocuments(),
+    Vehicle.countDocuments({ isActive: true }),
+    ParkingSlot.find({ isActive: true }).select("maxCapacity"),
+    ParkingCycle.countDocuments(),
+    currentCycle(),
+    ParkingAssignment.find().populate("flatId", "flatNumber")
+      .populate("slotId", "slotNumber").sort({ createdAt: -1 }).limit(5),
+  ]);
 
-    const totalVehicles =
-      await Vehicle.countDocuments({
-        isActive: true,
-      });
+  const assignmentFilter = { cycleId: activeCycle?._id, assignmentStatus: "ACTIVE" };
+  const [insideAssignments, outsideAssignments] = activeCycle ? await Promise.all([
+    ParkingAssignment.countDocuments({ ...assignmentFilter, parkingType: "INSIDE" }),
+    ParkingAssignment.countDocuments({ ...assignmentFilter, parkingType: "OUTSIDE" }),
+  ]) : [0, 0];
+  const occupied = insideAssignments + outsideAssignments;
+  const totalCapacity = slots.reduce((sum, slot) => sum + slot.maxCapacity, 0);
 
-    const totalSlots =
-      await ParkingSlot.countDocuments({
-        isActive: true,
-      });
-
-    const totalCycles =
-      await ParkingCycle.countDocuments();
-
-    const activeCycle =
-      await ParkingCycle.findOne({
-        status: "ACTIVE",
-      });
-
-    let activeCycleAssignments = 0;
-
-    if (activeCycle) {
-      activeCycleAssignments =
-        await ParkingAssignment.countDocuments({
-          cycleId: activeCycle._id,
-          assignmentStatus: "ACTIVE",
-        });
-    }
-
-    const insideAssignments =
-      await ParkingAssignment.countDocuments({
-        parkingType: "INSIDE",
-        assignmentStatus: "ACTIVE",
-      });
-
-    const outsideAssignments =
-      await ParkingAssignment.countDocuments({
-        parkingType: "OUTSIDE",
-        assignmentStatus: "ACTIVE",
-      });
-
-    const totalCapacity =
-      (
-        await ParkingSlot.find({
-          isActive: true,
-        })
-      ).reduce(
-        (sum, slot) =>
-          sum + slot.maxCapacity,
-        0
-      );
-
-    const occupancyPercentage =
-      totalCapacity > 0
-        ? Math.round(
-            ((insideAssignments +
-              outsideAssignments) /
-              totalCapacity) *
-              100
-          )
-        : 0;
-
-    const recentAssignments =
-      await ParkingAssignment.find()
-        .populate(
-          "flatId",
-          "flatNumber"
-        )
-        .populate(
-          "slotId",
-          "slotNumber"
-        )
-        .sort({
-          createdAt: -1,
-        })
-        .limit(5);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        totalFlats,
-        totalVehicles,
-        totalSlots,
-        totalCycles,
-
-        activeCycle:
-          activeCycle?.cycleName ||
-          null,
-
-        activeCycleAssignments,
-
-        activeCycleStartDate:
-          activeCycle?.startDate ||
-          null,
-
-        activeCycleEndDate:
-          activeCycle?.endDate ||
-          null,
-
-        activeCycleStatus:
-          activeCycle?.status ||
-          null,
-
-        insideAssignments,
-        outsideAssignments,
-
-        totalCapacity,
-
-        availableCapacity:
-          totalCapacity -
-          (insideAssignments +
-            outsideAssignments),
-
-        occupancyPercentage,
-
-        recentAssignments,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-module.exports = {
-  getDashboardData,
-};
+  res.json({
+    success: true,
+    data: {
+      totalFlats, totalVehicles, totalSlots: slots.length, totalCycles,
+      activeCycle: activeCycle?.cycleName ?? null,
+      activeCycleAssignments: occupied,
+      activeCycleStartDate: activeCycle?.startDate ?? null,
+      activeCycleEndDate: activeCycle?.endDate ?? null,
+      activeCycleStatus: activeCycle?.status ?? null,
+      insideAssignments, outsideAssignments, totalCapacity,
+      availableCapacity: totalCapacity - occupied,
+      occupancyPercentage: totalCapacity > 0 ? Math.round(occupied / totalCapacity * 100) : 0,
+      recentAssignments,
+    },
+  });
+}
+module.exports = { getDashboardData };

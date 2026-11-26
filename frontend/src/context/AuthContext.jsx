@@ -6,6 +6,7 @@ import {
 } from "react";
 
 import authService from "../services/authService";
+import { sessionEndedEvent } from "../services/api";
 
 const AuthContext = createContext();
 
@@ -21,6 +22,15 @@ export const AuthProvider = ({ children }) => {
   ] = useState(false);
 
   useEffect(() => {
+    const clearSession = () => {
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+    window.addEventListener(sessionEndedEvent, clearSession);
+    return () => window.removeEventListener(sessionEndedEvent, clearSession);
+  }, []);
+
+  useEffect(() => {
     checkAuth();
   }, []);
 
@@ -31,7 +41,7 @@ export const AuthProvider = ({ children }) => {
 
       setUser(user);
       setIsAuthenticated(true);
-    } catch (error) {
+    } catch {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
 

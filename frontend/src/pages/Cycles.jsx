@@ -249,7 +249,7 @@ const cloneCycle =
       );
 
       await api.post(
-        "/cycles",
+        `/cycles/${selectedCycle._id}/clone`,
         {
           cycleName:
             cloneData.cycleName,
