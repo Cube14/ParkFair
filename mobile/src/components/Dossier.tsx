@@ -3,11 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { useState } from 'react';
-import { Alert, Modal, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { ApiError } from '../api';
 import { applyDraftReview, type ColumnMapping, type DraftResponse, type InputFile, type Row } from '../parkingClient';
 import { useSession } from '../session';
 import { useTheme } from '../theme';
+import { Control, Display, EditorialFrame, Label, Note, useDesignPreview, useEditorial, usePreviewMotion } from './Editorial';
 import { Action, Copy, Screen } from './Screen';
 
 type Cycle = { _id: string; cycleName: string; status: string };
@@ -27,6 +28,9 @@ function Field({ label, value, set }: { label: string; value: string; set: (valu
 
 export default function Dossier() {
   const router = useRouter();
+  const { enabled } = useDesignPreview();
+  const ink = useEditorial();
+  const motion = usePreviewMotion();
   const { session, parking, read, signOut } = useSession();
   const { colors } = useTheme();
   const client = parking();
@@ -141,16 +145,23 @@ export default function Dossier() {
 
   const act = (label: string, press: () => void, disallowed = false) =>
     <Action label={label} onPress={press} disabled={busy || disallowed} />;
-  return <Screen title="Allocation dossier">
+  const Frame = enabled ? EditorialFrame : Screen;
+  return <Frame title={enabled && stage === 1 ? "Allocation review" : "Allocation dossier"} eyebrow="PARKING OFFICE">
     {act('Parking office', () => router.replace('/occupancy'))}
-    <View accessibilityLabel={'Stage ' + (stage + 1) + ' of ' + steps.length + ', ' + steps[stage]}
+    {enabled && <View style={{ flexDirection:'row', gap:4 }}>
+      {steps.map((label, i) => <View key={label} style={{ flex:1, gap:5 }}>
+        <View style={{ height:3, backgroundColor:i <= stage ? ink.gold : ink.rule }} />
+        <Text style={{ color:i === stage ? ink.ink : ink.muted, fontSize:10, fontWeight:i === stage ? '700' : '400' }}>{label}</Text>
+      </View>)}
+    </View>}
+    {!enabled && <View accessibilityLabel={'Stage ' + (stage + 1) + ' of ' + steps.length + ', ' + steps[stage]}
       accessible style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
       {steps.map((step, i) => <Text key={step} style={{
         paddingVertical: 6, paddingHorizontal: 8,
         backgroundColor: i === stage ? colors.surface : colors.background,
         color: i === stage ? colors.text : colors.secondary, fontWeight: i === stage ? '700' : '400',
       }}>{i + 1}. {step}</Text>)}
-    </View>
+    </View>}
     <Copy>{cycle?.cycleName ?? 'Choose a parking cycle'}{revision ? ' · Revision ' + revision + ' · ' + draft.draft.status : ''}</Copy>
     {busy && <Copy>Working…</Copy>}
     {error && <Copy error>{error}</Copy>}
@@ -208,12 +219,36 @@ export default function Dossier() {
     </>}
 
     {draft && stage === 1 && <>
-      <Copy>{rows.length} chart rows · {exclusions.length} reviewed exclusions</Copy>
+      {enabled ? <View style={{ backgroundColor:ink.stone,padding:17,gap:7,borderTopWidth:2,borderColor:ink.gold }}>
+        <Label>ALLOCATION COVERAGE</Label>
+        <Display size={33}>{draft.coverage ? draft.coverage.totalAssignedFlats + ' / ' + draft.coverage.totalEligibleFlats : rows.length + ' chart rows'}</Display>
+        {!!draft.coverage && <View style={{backgroundColor:ink.rule,height:4}}><View style={{height:4,backgroundColor:ink.gold,
+          width:Math.min(100,100*draft.coverage.totalAssignedFlats/Math.max(1,draft.coverage.totalEligibleFlats))+'%'}}/></View>}
+        <Note>{rows.length} chart rows · {exclusions.length} reviewed exclusions</Note>
+        {!draft.coverage && <Note>Validate the chart to check eligible-flat coverage.</Note>}
+      </View> : <Copy>{rows.length} chart rows · {exclusions.length} reviewed exclusions</Copy>}
       {!!draft.coverage && <Copy>{draft.coverage.totalAssignedFlats} of {draft.coverage.totalEligibleFlats} eligible flats assigned
         {'\n'}Unassigned · {draft.coverage.unassignedEligibleFlats.join(', ') || 'None'}
         {'\n'}Covered available · {draft.coverage.capacity.INSIDE.available} · Outdoor available · {draft.coverage.capacity.OUTSIDE.available}</Copy>}
       {(draft.issues ?? draft.version?.importIssues ?? []).map((issue, i) =>
-        <Copy error key={i}>{issue.row ? 'Row ' + issue.row + ' · ' : ''}{issue.message}</Copy>)}
+        enabled ? <View key={i} style={{ borderBottomWidth:1,borderColor:ink.rule,paddingVertical:8 }}>
+          <Label>{issue.row ? 'ROW ' + issue.row : 'CHART'} · {(fields[issue.field as keyof Row] ?? issue.field).toUpperCase()}</Label>
+          <Copy error>{issue.message}</Copy>
+          {editable && !conflict && rows.some(item => item.row === issue.row) && <Control title={'Correct row ' + issue.row}
+            onPress={() => {
+              const target = rows.findIndex(item => item.row === issue.row);
+              setRow(rowData(rows[target])); setIndex(target); setPicker(undefined); setDrawer(true);
+            }} />}
+        </View> : <Copy error key={i}>{issue.row ? 'Row ' + issue.row + ' · ' : ''}{issue.message}</Copy>)}
+      {enabled && editable && !conflict && !!draft.coverage?.unassignedEligibleFlats.length && <View>
+        <Label>UNCOVERED FLATS</Label>
+        {draft.coverage.unassignedEligibleFlats.map(flatNumber => <Control key={flatNumber}
+          title={'Assign flat ' + flatNumber} onPress={() => {
+            const existing = rows.findIndex(item => item.flatNumber === flatNumber);
+            setRow(existing >= 0 ? rowData(rows[existing]) : { ...blank, flatNumber });
+            setIndex(existing); setPicker('slotNumber'); setTerm(''); setDrawer(true);
+          }} />)}
+      </View>}
       {act('Validate and refresh coverage', () => run(async () => {
         setDraft(applyDraftReview(draft, await client.validate(id!, revision!)));
       }), !editable || conflict)}
@@ -306,8 +341,13 @@ export default function Dossier() {
     })}
     {act('Sign out', () => run(signOut))}
 
-    <Modal visible={drawer} animationType="none" presentationStyle="formSheet" onRequestClose={() => { if (!busy) { setDrawer(false); setIndex(null); } }}>
-      <Screen title={index !== null ? 'Edit chart row' : 'Allocation chart'}>
+    <Modal visible={drawer} animationType={motion ? 'slide' : 'none'} transparent={enabled} presentationStyle={enabled ? "overFullScreen" : "formSheet"} onRequestClose={() => { if (!busy) { setDrawer(false); setIndex(null); } }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{flex:1,justifyContent:'flex-end', backgroundColor:enabled ? '#14171088' : undefined}}>
+      <View style={enabled ? { height:'88%', backgroundColor:ink.paper,borderTopLeftRadius:20,borderTopRightRadius:20,overflow:'hidden' } : {flex:1}}>
+      {enabled && <Pressable accessibilityRole="button" accessibilityLabel="Dismiss sheet" onPress={() => {if (!busy) {setDrawer(false);setIndex(null);setPicker(undefined);}}}
+        style={{alignItems:'center',paddingVertical:13}}><View style={{width:37,height:4,borderRadius:2,backgroundColor:ink.gold}} /></Pressable>}
+      <Screen previewSheet title={index !== null ? 'Edit chart row' : 'Allocation chart'}>
         {error && <Copy error>{error}</Copy>}
         {index === null ? <>
           <Field label="Search flats, bays or vehicles" value={filter} set={setFilter} />
@@ -344,6 +384,8 @@ export default function Dossier() {
         </>}
         {busy && <Text style={{ color: colors.text }}>Saving…</Text>}
       </Screen>
+      </View>
+      </KeyboardAvoidingView>
     </Modal>
-  </Screen>;
+  </Frame>;
 }

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DesignPreviewProvider, EditorialFrame, useDesignPreview } from '../components/Editorial';
 import { Action, Copy, Loading, Screen } from '../components/Screen';
 import { SessionProvider, useSession } from '../session';
 import { AppearanceProvider, useTheme } from '../theme';
@@ -13,6 +14,8 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30
 function Navigation() {
   const { session, restoring, restoreError, retryRestore, signOut } = useSession();
   const { colors, isDark } = useTheme();
+  const {enabled} = useDesignPreview();
+  if (restoring && enabled) return <EditorialFrame title="ParkFair" eyebrow="RESIDENT PARKING"><Loading label="Restoring session" /></EditorialFrame>;
   if (restoring) return <Screen title="ParkFair"><Loading label="Restoring session" /></Screen>;
   if (restoreError) {
     return (
@@ -49,7 +52,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <AppearanceProvider><SessionProvider><Navigation /></SessionProvider></AppearanceProvider>
+        <AppearanceProvider><DesignPreviewProvider><SessionProvider><Navigation /></SessionProvider></DesignPreviewProvider></AppearanceProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

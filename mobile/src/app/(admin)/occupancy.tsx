@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert, BackHandler, Pressable, Text, TextInput, View } from 'react-native';
 import { useSession } from '../../session';
 import { useTheme } from '../../theme';
+import { OfficeComposition, useDesignPreview } from '../../components/Editorial';
 import { Action, Copy, Screen } from '../../components/Screen';
 import type { AdminOccupancy } from '../../api';
 
@@ -12,6 +13,7 @@ type Section = keyof typeof sections;
 type Entry = { _id: string; flatNumber?: string; slotNumber?: string; vehicleNumber?: string; cycleName?: string; status?: string; maxCapacity?: number; vehicleCount?: number; isActive?: boolean; flatId?: {_id:string;flatNumber:string}; account?: {exists:boolean;isActive:boolean;userId?:string} };
 export default function Workspace() {
   const router = useRouter();
+  const {enabled} = useDesignPreview();
   const { session, read, request, signOut } = useSession();
   const { colors } = useTheme();
   const [section, setSection] = useState<Section>();
@@ -91,6 +93,9 @@ export default function Workspace() {
       }},
     ]);
   }
+  if (enabled && !section && !settings) return <OfficeComposition data={overview.data?.data} pending={overview.isPending}
+    retry={overview.isError ? () => { void overview.refetch(); } : undefined} navigate={open}
+    onDossier={() => router.push('/allocations')} onSettings={() => setSettings(true)} />;
   return <Screen title={settings ? 'Office settings' : resident ? 'Resident account' : section ?? 'Parking office'}>
     {settings ? <>
       <Copy>{session?.user.username}</Copy>

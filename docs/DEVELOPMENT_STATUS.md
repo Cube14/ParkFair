@@ -1,5 +1,9 @@
 # Development status
 
+## Phase 5B · premium native preview
+
+The native redesign is available in the running development client under **Open design preview**. Priority screens have paired light and dark Android captures. The review includes both role recordings, direct row correction and the typography, motion and imagery decisions awaiting approval. [Phase 5B native review](design/phase-5b/REVIEW.md)
+
 ## Phase 5 · usability review
 
 The Android administrator now lands in Parking Office with live occupancy and searchable management directories. Allocation work occupies its own route. The resident uses custom bottom navigation, formatted schedule views, persistent appearance settings and a dedicated signed-in devices screen. The Android acceptance record covers synthetic account and inventory changes, XLSX import, validation and inventory selection. Further native acceptance and the final visual and garage decisions remain open. [Phase 5 Android review](design/phase-5/ACCEPTANCE.md)
