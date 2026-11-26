@@ -166,7 +166,7 @@ function Flats() {
     if (!flat.account?.userId) return;
 
     try {
-      await api.patch(`/auth/resident/${flat.account.userId}/toggle`);
+      await api.put(`/auth/resident/${flat.account.userId}/toggle`);
       toast.success(flat.account.isActive ? "Account disabled" : "Account enabled");
       loadFlats();
     } catch (error) {

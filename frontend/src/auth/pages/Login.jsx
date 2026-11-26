@@ -62,7 +62,7 @@ function Login() {
       !formData.identifier.trim()
     ) {
       setError(
-        "Please enter your Flat Number or Email."
+        "Please enter your username or flat number."
       );
 
       return false;
@@ -93,34 +93,13 @@ function Login() {
       try {
         setLoading(true);
 
-        const data =
-    await login({
-        identifier:
-            formData.identifier.trim(),
-        password:
-            formData.password,
-    });
-
-toast.success(
-    "Welcome back to ParkFair."
-);
-
-if (data.user.role === "ADMIN") {
-
-    navigate("/");
-
-} else {
-
-    navigate("/resident");
-
-}
-
-        toast.success(
-          "Welcome back to ParkFair."
-        );
-
+        const data = await login({
+          identifier: formData.identifier.trim(),
+          password: formData.password,
+        });
+        toast.success("Welcome back to ParkFair.");
+        navigate(data.user.role === "ADMIN" ? "/" : "/resident");
       } catch (err) {
-        console.error(err);
 
         setError(
           err?.response?.data
@@ -232,11 +211,11 @@ if (data.user.role === "ADMIN") {
 
           <AuthInput
             label="
-              Flat Number or Email
+              Username or flat number
             "
             name="identifier"
             placeholder="
-              Flat 302 or shivansh@email.com
+              Username or flat number
             "
             value={
               formData.identifier

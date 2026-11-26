@@ -1,55 +1,42 @@
-const tls = require("tls");
+const dns = require("node:dns").promises;
+const tls = require("node:tls");
 
-const hosts = [
-  "ac-zo6srhj-shard-00-00.swz91yf.mongodb.net",
-  "ac-zo6srhj-shard-00-01.swz91yf.mongodb.net",
-  "ac-zo6srhj-shard-00-02.swz91yf.mongodb.net",
-];
-
-const versions = ["TLSv1.2", "TLSv1.3"];
-
-async function testTLS(host, version) {
+function probe({ name, port }, version) {
   return new Promise((resolve) => {
-    console.log(`\nTesting ${host} using ${version}...`);
-
+    let tcp = false;
     const socket = tls.connect({
-      host,
-      port: 27017,
-      servername: host,
-      minVersion: version,
-      maxVersion: version,
+      host: name, port, servername: name, minVersion: version, maxVersion: version,
       rejectUnauthorized: true,
     });
-
-    socket.setTimeout(10000);
-
-    socket.once("secureConnect", () => {
-      console.log("✅ SUCCESS");
-      console.log("Negotiated:", socket.getProtocol());
-      console.log("Authorized:", socket.authorized);
-      socket.end();
-      resolve();
-    });
-
-    socket.once("error", (error) => {
-      console.log("❌ FAILED:", error.message);
-      resolve();
-    });
-
-    socket.once("timeout", () => {
-      console.log("❌ TIMEOUT");
+    const finish = (outcome) => {
+      clearTimeout(timeout);
       socket.destroy();
-      resolve();
-    });
+      resolve({ version, tcp, outcome });
+    };
+    const timeout = setTimeout(() => finish("timeout"), 6500);
+    socket.once("connect", () => { tcp = true; });
+    socket.once("secureConnect", () => finish("verified"));
+    socket.once("error", (error) => finish(error.code ?? error.name));
   });
 }
 
-async function main() {
-  for (const host of hosts) {
-    for (const version of versions) {
-      await testTLS(host, version);
-    }
+async function run() {
+  const host = process.env.PARKFAIR_ATLAS_HOST;
+  if (!host || !/^[a-z0-9][a-z0-9.-]*\.mongodb\.net$/i.test(host)) {
+    console.error("Set PARKFAIR_ATLAS_HOST to an Atlas SRV hostname with no credentials.");
+    process.exitCode = 1;
+    return;
   }
+  const servers = await dns.resolveSrv(`_mongodb._tcp.${host}`);
+  console.log(`SRV records: ${servers.length}`);
+  const outcomes = await Promise.all(servers.flatMap((server, index) =>
+    ["TLSv1.2", "TLSv1.3"].map(async (version) => ({ node: index + 1, ...await probe(server, version) }))
+  ));
+  for (const outcome of outcomes) console.log(JSON.stringify(outcome));
+  if (!outcomes.length || outcomes.some(({ outcome }) => outcome !== "verified")) process.exitCode = 1;
 }
 
-main();
+run().catch((error) => {
+  console.error(`DNS probe failed: ${error.code ?? error.name}`);
+  process.exitCode = 1;
+});

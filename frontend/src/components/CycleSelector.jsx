@@ -40,11 +40,8 @@ function CycleSelector() {
           cycleData[0]
         );
       }
-    } catch (error) {
-      console.error(
-        "Cycle Load Error:",
-        error
-      );
+    } catch {
+      console.error("Parking data request failed.");
     }
   };
 

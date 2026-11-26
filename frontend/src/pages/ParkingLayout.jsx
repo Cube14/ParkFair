@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 
 function ParkingLayout() {
-  const [matrix, setMatrix] =
-    useState(null);
+  const [matrix, setMatrix] = useState(null);
+  const [capacities, setCapacities] = useState({});
 
   const { selectedCycle } =
     useCycle();
@@ -45,15 +45,12 @@ function ParkingLayout() {
           `/cycles/${selectedCycle._id}/matrix`
         );
 
-      setMatrix(
-        response.data.data
-      );
-    } catch (error) {
-      console.error(
-        "Layout Load Error:",
-        error
-      );
+      setCapacities(response.data.capacity ?? {});
+      setMatrix(response.data.data);
+    } catch {
+      console.error("Parking data request failed.");
 
+      setCapacities({});
       setMatrix({});
     }
   };
@@ -84,7 +81,7 @@ function ParkingLayout() {
     );
   }
 
-  const totalCapacity = 16;
+  const totalCapacity = Object.values(capacities).reduce((total, capacity) => total + capacity, 0);
 
   const occupiedSpaces =
     Object.values(matrix)
@@ -95,12 +92,7 @@ function ParkingLayout() {
     totalCapacity -
     occupiedSpaces;
 
-  const occupancyPercentage =
-    Math.round(
-      (occupiedSpaces /
-        totalCapacity) *
-        100
-    );
+  const occupancyPercentage = totalCapacity > 0 ? Math.round(occupiedSpaces / totalCapacity * 100) : 0;
 
   const outsideCount =
     matrix?.OUTSIDE?.length ||
@@ -113,26 +105,13 @@ function ParkingLayout() {
   const flats =
     matrix?.[slotNumber] || [];
 
-  const capacityMap = {
-    "1": 2,
-    "2": 2,
-    "3": 1,
-    "4": 1,
-    "5": 2,
-    "6": 2,
-    "7": 1,
-    "8": 1,
-    OUTSIDE: 4,
-  };
-
-  const capacity =
-    capacityMap[slotNumber];
+  const capacity = capacities[slotNumber] ?? 0;
 
   const occupied =
     flats.length;
 
   const isFull =
-    occupied >= capacity;
+    capacity > 0 && occupied >= capacity;
 
   const isPartial =
     occupied > 0 &&

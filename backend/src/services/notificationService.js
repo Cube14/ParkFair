@@ -1,380 +1,96 @@
-const ParkingCycle = require("../models/ParkingCycle");
+const { setTimeout: delay } = require("node:timers/promises");
+const Flat = require("../models/Flat");
 const ParkingAssignment = require("../models/ParkingAssignment");
+const { ApiError } = require("../middleware/apiErrors");
+const { notificationCycle, formatCycleDate } = require("./cycleSelection");
+const { sendMessage } = require("./whatsappService");
 
-const {
-  sendMessage,
-} = require("./whatsappService");
-
-async function sendActiveCycleNotifications() {
-  // ============================
-  // Active Cycle
-  // ============================
-
-  const activeCycle =
-    await ParkingCycle.findOne({
-      status: "PLANNED",
-    });
-  console.log("USING CYCLE:");
-  console.log(activeCycle);
-  if (!activeCycle) {
-    throw new Error(
-      "No active parking cycle found."
-    );
+function notificationFor(assignment, cycle) {
+  const { flatId: flat, vehicleId: vehicle, slotId: slot, parkingType } = assignment;
+  if (!flat || !vehicle || (!slot && parkingType !== "OUTSIDE")) {
+    throw new ApiError(422, "Assignment references a missing flat, vehicle or slot.");
   }
-
-  // ============================
-  // Active Assignments
-  // ============================
-
-  const assignments =
-    
-    await ParkingAssignment.find({
-      cycleId: activeCycle._id,
-      assignmentStatus: "ACTIVE",
-    })
-      .populate("flatId")
-      .populate("vehicleId")
-      .populate("slotId");
-  console.log(
-    `Assignments found: ${assignments.length}`
-    );
-
-  console.log(
-    assignments.map(a => a.flatId.flatNumber)
-    );
-  if (!assignments.length) {
-    throw new Error(
-      "No parking assignments found."
-    );
-  }
-
-  const startDate =
-    new Date(
-      activeCycle.startDate
-    ).toLocaleDateString(
-      "en-IN",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }
-    );
-
-  const endDate =
-    new Date(
-      activeCycle.endDate
-    ).toLocaleDateString(
-      "en-IN",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }
-    );
-
-  let sent = 0;
-  let failed = 0;
-
-  const errors = [];
-
-  // ============================
-  // Send One By One
-  // ============================
-
-  for (const assignment of assignments) {
-    try {
-      const flat =
-        assignment.flatId;
-
-      const vehicle =
-        assignment.vehicleId;
-
-      const slot =
-        assignment.slotId;
-
-      // ------------------------
-
-      if (
-        !flat ||
-        !flat.contactNumber
-      ) {
-        failed++;
-
-        errors.push({
-          flat:
-            flat?.flatNumber ||
-            "Unknown",
-          reason:
-            "Missing contact number",
-        });
-
-        continue;
-      }
-
-      // ------------------------
-
-      let slotDisplay = "";
-
-      if (
-        assignment.parkingType ===
-        "OUTSIDE"
-      ) {
-        slotDisplay =
-          "Outside Parking Area";
-      } else {
-        slotDisplay = slot.slotNumber;
-      }
-
-      // ------------------------
-
-      const message = `🏠 *SIDDH-A Society*
+  const start = formatCycleDate(cycle.startDate);
+  const end = formatCycleDate(cycle.endDate);
+  const slotDisplay = parkingType === "OUTSIDE" ? "Outside Parking Area" : slot.slotNumber;
+  return {
+    flat: flat.flatNumber,
+    owner: flat.ownerName,
+    phone: flat.contactNumber,
+    parking: parkingType,
+    slot: slotDisplay,
+    vehicle: vehicle.vehicleNumber,
+    message: `*SIDDH-A Society*
 
 Dear *${flat.ownerName}*,
 
-Your parking allocation for the upcoming parking cycle is as follows.
+Please use the parking location below from ${start} through ${end}.
 
-Please park your vehicle in the assigned location starting from tomorrow (16 Jul 2026).
+*Flat* ${flat.flatNumber}
+*Vehicle* ${vehicle.vehicleNumber}
+*Parking type* ${parkingType}
+*Assigned slot* ${slotDisplay}
+*Cycle* ${cycle.cycleName}
 
-━━━━━━━━━━━━━━━━━━
+If you notice a discrepancy, please contact the society administrator.
 
-🏢 *Flat*
-${flat.flatNumber}
+_ParkFair automated notification_`,
+  };
+}
 
-🚗 *Vehicle*
-${vehicle.vehicleNumber}
+async function getNotificationBatch(cycleId, flatNumber) {
+  const cycle = await notificationCycle(cycleId);
+  const filter = { cycleId: cycle._id, assignmentStatus: "ACTIVE" };
+  if (flatNumber) {
+    const flat = await Flat.findOne({ flatNumber });
+    if (!flat) throw new ApiError(404, "Flat not found.");
+    filter.flatId = flat._id;
+  }
+  const assignments = await ParkingAssignment.find(filter)
+    .populate("flatId", "flatNumber ownerName contactNumber")
+    .populate("vehicleId", "vehicleNumber").populate("slotId", "slotNumber")
+    .sort({ createdAt: 1, _id: 1 });
+  return { cycle, assignments };
+}
 
-📍 *Parking Type*
-${assignment.parkingType}
+async function previewActiveCycleNotifications(cycleId) {
+  const { cycle, assignments } = await getNotificationBatch(cycleId);
+  const data = [];
+  const errors = [];
+  for (const assignment of assignments) {
+    try {
+      data.push(notificationFor(assignment, cycle));
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error;
+      errors.push({ flat: assignment.flatId?.flatNumber ?? null, reason: error.message });
+    }
+  }
+  return { success: true, cycleId: cycle._id, total: data.length, data, errors };
+}
 
-🅿 *Assigned Slot*
-${slotDisplay}
-
-📅 *Cycle*
-${activeCycle.cycleName}
-
-📆 *Duration*
-${startDate} - ${endDate}
-
-━━━━━━━━━━━━━━━━━━
-
-Please ensure your vehicle is parked only in the assigned location throughout this cycle.
-
-If you notice any discrepancy, kindly contact the society administrator.
-
-_This is an automated message generated by ParkFair._
-
-Thank you.
-
-Have a wonderful day. 😊`;
-
-      // ------------------------
-
-      await sendMessage(
-        flat.contactNumber,
-        message
-      );
-
+async function sendActiveCycleNotifications(cycleId, flatNumber) {
+  const { cycle, assignments } = await getNotificationBatch(cycleId, flatNumber);
+  if (!assignments.length) throw new ApiError(404, "No parking assignments found.");
+  const errors = [];
+  let sent = 0;
+  for (const [index, assignment] of assignments.entries()) {
+    try {
+      const notification = notificationFor(assignment, cycle);
+      await sendMessage(notification.phone, notification.message);
       sent++;
-
-      console.log(
-        `✅ Sent -> Flat ${flat.flatNumber}`
-      );
-
-      // Wait 5 seconds
-      await new Promise(
-        (resolve) =>
-          setTimeout(
-            resolve,
-            5000
-          )
-      );
-    } catch (err) {
-      failed++;
-
-      console.error(
-        `❌ Failed -> ${assignment.flatId?.flatNumber}`,
-        err.message
-      );
-
+      if (index < assignments.length - 1) await delay(5000);
+    } catch (error) {
+      if (flatNumber) throw error;
       errors.push({
-        flat:
-          assignment.flatId
-            ?.flatNumber ||
-          "Unknown",
-
-        reason:
-          err.message,
+        flat: assignment.flatId?.flatNumber ?? null,
+        reason: error instanceof ApiError ? error.message : "WhatsApp delivery failed.",
       });
     }
   }
-
-  // ============================
-  // Summary
-  // ============================
-
-  console.log("");
-
-  console.log(
-    "===================================="
-  );
-
-  console.log(
-    "ParkFair Notification Summary"
-  );
-
-  console.log(
-    "===================================="
-  );
-
-  console.log(
-    `Cycle  : ${activeCycle.cycleName}`
-  );
-
-  console.log(
-    `Total  : ${assignments.length}`
-  );
-
-  console.log(
-    `Sent   : ${sent}`
-  );
-
-  console.log(
-    `Failed : ${failed}`
-  );
-
-  console.log(
-    "===================================="
-  );
-
   return {
-    success: true,
-
-    cycle:
-      activeCycle.cycleName,
-
-    total:
-      assignments.length,
-
-    sent,
-
-    failed,
-
-    errors,
-  };
-}
-async function previewActiveCycleNotifications() {
-  const activeCycle =
-    await ParkingCycle.findOne({
-      status: "PLANNED",
-    });
-  console.log("USING CYCLE:");
-  console.log(activeCycle);
-  if (!activeCycle) {
-    throw new Error(
-      "No active parking cycle found."
-    );
-  }
-
-  const assignments =
-    await ParkingAssignment.find({
-      cycleId: activeCycle._id,
-      assignmentStatus: "ACTIVE",
-    })
-      .populate("flatId")
-      .populate("vehicleId")
-      .populate("slotId");
-
-  const startDate =
-    new Date(
-      activeCycle.startDate
-    ).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-
-  const endDate =
-    new Date(
-      activeCycle.endDate
-    ).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-
-  const preview = assignments.map(
-    (assignment) => {
-      const flat = assignment.flatId;
-      const vehicle =
-        assignment.vehicleId;
-      const slot = assignment.slotId;
-
-      let slotDisplay =
-        assignment.parkingType ===
-        "OUTSIDE"
-          ? "Outside Parking Area"
-          : slot.slotNumber;
-
-      const message = `🏠 *SIDDH-A Society*
-
-Dear *${flat.ownerName}*,
-
-Your parking allocation for the upcoming parking cycle is as follows.
-
-Please park your vehicle in the assigned location starting from tomorrow (16 Jul 2026).
-
-━━━━━━━━━━━━━━━━━━
-
-🏢 *Flat*
-${flat.flatNumber}
-
-🚗 *Vehicle*
-${vehicle.vehicleNumber}
-
-📍 *Parking Type*
-${assignment.parkingType}
-
-🅿 *Assigned Slot*
-${slotDisplay}
-
-📅 *Cycle*
-${activeCycle.cycleName}
-
-📆 *Duration*
-${startDate} - ${endDate}
-
-━━━━━━━━━━━━━━━━━━
-
-Please ensure your vehicle is parked only in the assigned location throughout this cycle.
-
-If you notice any discrepancy, kindly contact the society administrator.
-
-_This is an automated notification from the SIDDH-A Society Parking Management System._
-
-Thank you.
-
-Have a wonderful day. 😊`;
-
-      return {
-        flat: flat.flatNumber,
-        owner: flat.ownerName,
-        phone: flat.contactNumber,
-        parking: assignment.parkingType,
-        slot: slotDisplay,
-        vehicle: vehicle.vehicleNumber,
-        message,
-      };
-    }
-  );
-
-  return {
-    success: true,
-    total: preview.length,
-    data: preview,
+    success: errors.length === 0, cycle: cycle.cycleName, cycleId: cycle._id,
+    total: assignments.length, sent, failed: errors.length, errors,
   };
 }
 
-module.exports = {
-  sendActiveCycleNotifications,
-  previewActiveCycleNotifications,
-};
+module.exports = { sendActiveCycleNotifications, previewActiveCycleNotifications };

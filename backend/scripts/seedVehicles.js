@@ -28,7 +28,7 @@ const seedVehicles = async () => {
 
     process.exit();
   } catch (error) {
-    console.error(error);
+    console.error("Seed failed. Check the isolated database configuration.");
 
     process.exit(1);
   }

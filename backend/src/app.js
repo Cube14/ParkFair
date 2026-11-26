@@ -1,72 +1,49 @@
 const express = require("express");
 const cors = require("cors");
+const { authenticate, requireRole } = require("./middleware/authMiddleware");
+const { ApiError, handleError } = require("./middleware/apiErrors");
 
-const healthRoutes = require("./routes/healthRoutes");
-const parkingSlotRoutes = require("./routes/parkingSlotRoutes");
-const flatRoutes = require("./routes/flatRoutes");
-const vehicleRoutes = require("./routes/vehicleRoutes");
-const parkingCycleRoutes = require("./routes/parkingCycleRoutes");
-const cycleSummaryRoutes = require("./routes/cycleSummaryRoutes");
-const parkingAssignmentRoutes = require("./routes/parkingAssignmentRoutes");
-const cycleMatrixRoutes = require("./routes/cycleMatrixRoutes");
-const layoutRoutes = require("./routes/layoutRoutes");
-const dashboardRoutes = require("./routes/dashboardRoutes");
-const authRoutes = require("./routes/authRoutes");
-const cloneCycleRoutes = require("./routes/cloneCycleRoutes");
-const residentRoutes = require("./routes/residentRoutes");
-const allocationRoutes = require(
-  "./routes/allocationRoutes"
-);
 const app = express();
-const notificationRoutes =
-require("./routes/notificationRoutes");
+app.disable("x-powered-by");
+const origins = (process.env.WEB_ORIGINS ?? "").split(",").map((entry) => entry.trim()).filter(Boolean);
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, Boolean(origin && origins.includes(origin)));
+  },
+}));
+app.use(express.json({ limit: "128kb" }));
+app.use(express.urlencoded({ extended: false, limit: "128kb" }));
 
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/health", healthRoutes);
-app.use("/api/flats", flatRoutes);
-app.use("/api/vehicles", vehicleRoutes);
-app.use("/api/layouts", layoutRoutes);
-app.use("/api/cycles", parkingCycleRoutes);
-app.use("/api/assignments", parkingAssignmentRoutes);
-app.use("/api/resident", residentRoutes);
-app.use("/api/cycles", cycleMatrixRoutes);
-app.use("/api/slots", parkingSlotRoutes);
-app.use("/api/allocations", allocationRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/cycles", cycleSummaryRoutes);
-app.use("/api/cycles", cloneCycleRoutes);
-app.use(
-  "/api/notifications",
-  notificationRoutes
-);
-
-app.use(
-  "/api/notifications",
-  notificationRoutes
-);
-
-// Root Route
-app.get("/", (req, res) => {
-  res.status(200).json({
-    project: "ParkFair",
-    version: "1.0.0",
-    status: "Running",
-  });
+app.use("/api", (req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
 });
 
-// 404 Handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
-  });
-});
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/health", require("./routes/healthRoutes"));
+app.use("/api/resident", authenticate, requireRole("RESIDENT"), require("./routes/residentRoutes"));
 
+const adminRoutes = {
+  flats: [require("./routes/flatRoutes")],
+  vehicles: [require("./routes/vehicleRoutes")],
+  layouts: [require("./routes/layoutRoutes")],
+  cycles: [
+    require("./routes/parkingCycleRoutes"),
+    require("./routes/cycleMatrixRoutes"),
+    require("./routes/cycleSummaryRoutes"),
+    require("./routes/cloneCycleRoutes"),
+  ],
+  assignments: [require("./routes/parkingAssignmentRoutes")],
+  slots: [require("./routes/parkingSlotRoutes")],
+  allocations: [require("./routes/allocationRoutes")],
+  dashboard: [require("./routes/dashboardRoutes")],
+  notifications: [require("./routes/notificationRoutes")],
+};
+for (const [path, routers] of Object.entries(adminRoutes)) {
+  app.use(`/api/${path}`, authenticate, requireRole("ADMIN"), ...routers);
+}
+
+app.get("/", (req, res) => res.json({ project: "ParkFair", version: "1.0.0", status: "Running" }));
+app.use((req, res, next) => next(new ApiError(404, "Route not found.")));
+app.use(handleError);
 module.exports = app;

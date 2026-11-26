@@ -34,8 +34,8 @@ function Dashboard() {
           await residentService.getDashboard();
 
         setDashboard(response);
-      } catch (err) {
-        console.error(err);
+      } catch {
+        console.error("Request failed");
 
         setError(
           "Unable to load resident dashboard."

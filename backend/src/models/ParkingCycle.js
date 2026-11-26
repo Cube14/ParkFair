@@ -24,6 +24,8 @@ const parkingCycleSchema = new mongoose.Schema(
       required: true,
     },
 
+    assignmentRevision: { type: Number, select: false },
+
     status: {
       type: String,
       enum: [

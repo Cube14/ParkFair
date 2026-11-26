@@ -78,8 +78,8 @@ function Analytics() {
         assignments:
           assignmentsRes.data.data,
       });
-    } catch (error) {
-      console.error(error);
+    } catch {
+      console.error("Request failed");
     } finally {
       setLoading(false);
     }
