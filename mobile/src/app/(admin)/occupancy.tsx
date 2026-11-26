@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Alert, BackHandler, Pressable, Text, TextInput, View } from 'react-native';
 import { useSession } from '../../session';
 import { useTheme } from '../../theme';
-import { OfficeComposition, useDesignPreview } from '../../components/Editorial';
+import { useDesignPreview } from '../../components/Editorial';
+import { SignatureOffice } from '../../components/Signature';
 import { Action, Copy, Screen } from '../../components/Screen';
 import type { AdminOccupancy } from '../../api';
 
@@ -93,7 +94,7 @@ export default function Workspace() {
       }},
     ]);
   }
-  if (enabled && !section && !settings) return <OfficeComposition data={overview.data?.data} pending={overview.isPending}
+  if (enabled && !section && !settings) return <SignatureOffice data={overview.data?.data} pending={overview.isPending}
     retry={overview.isError ? () => { void overview.refetch(); } : undefined} navigate={open}
     onDossier={() => router.push('/allocations')} onSettings={() => setSettings(true)} />;
   return <Screen title={settings ? 'Office settings' : resident ? 'Resident account' : section ?? 'Parking office'}>

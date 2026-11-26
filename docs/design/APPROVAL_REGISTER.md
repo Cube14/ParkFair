@@ -18,3 +18,5 @@ The final checkpoint covers type, artwork, 3D vehicle, environment, motion and h
 Phase 5 supersedes Phase 4B as a visual review baseline after the owner rejected the earlier interface. Office navigation, schedule hierarchy, tab icons and device settings are available for native review. Final layout, typography, motion, vehicle and environment remain pending. [Android captures and acceptance](phase-5/ACCEPTANCE.md)
 
 Phase 5B is available behind the development-only **Open design preview** switch. Its substantial layouts, mark, typography proposal, motion and imagery await owner review. [Phase 5B native captures and decision register](phase-5b/REVIEW.md)
+
+Phase 5C uses the same development switch for a new connected resident arrival. The home, entrance, transitions and targeted office proposal await review. The Android 3D diagnostic establishes renderer behavior with cleared sample assets. Production vehicle, environment, imagery, type and motion require independent approval. [Phase 5C evidence and candidates](phase-5c/REVIEW.md)

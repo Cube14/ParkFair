@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
-import { Control, Display, EditorialFrame, Label, MotorImage, useDesignPreview, useEditorial } from '../../components/Editorial';
+import { useDesignPreview } from '../../components/Editorial';
+import { Scene, SignatureShell, StudioButton, useSignaturePalette } from '../../components/Signature';
 import { ApiError } from '../../api';
 import { Action, Copy, Screen } from '../../components/Screen';
 import { useSession } from '../../session';
@@ -8,14 +9,14 @@ import { useTheme } from '../../theme';
 
 export default function SignIn() {
   const { enabled } = useDesignPreview();
-  const ink = useEditorial();
+  const ink = useSignaturePalette();
   const { signIn } = useSession();
   const { colors } = useTheme();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [entrance, setEntrance] = useState(false);
+  const [entrance, setEntrance] = useState(true);
   const input = {
     color: colors.text, backgroundColor: colors.surface, borderColor: colors.line, borderWidth: 1,
     borderRadius: colors.radius, padding: colors.spacing.item, minHeight: 48, fontSize: 16,
@@ -47,19 +48,17 @@ export default function SignIn() {
         onPress={() => { void submit(); }} />
     </View>
   );
-  if (enabled && entrance) return <EditorialFrame>
-    <MotorImage immersive />
-    <View style={{padding:24,backgroundColor:ink.stone,gap:10}}>
-      <Label>RESIDENT AND SOCIETY PARKING</Label>
-      <Display size={56}>ParkFair.</Display>
-      <Control title="Continue to sign in" emphasis onPress={() => setEntrance(false)} />
+  if (enabled && entrance) return <SignatureShell title="ParkFair entrance">
+    <Scene entrance title="ParkFair" label="PRIVATE RESIDENCE PARKING">
+      <StudioButton title="Continue to sign in" bright onPress={() => setEntrance(false)} />
+    </Scene>
+  </SignatureShell>;
+  if (enabled) return <SignatureShell title="Sign in to ParkFair">
+    <Scene title="Welcome home" label="SECURE RESIDENT AND SOCIETY ACCESS" />
+    <View style={{padding:18,gap:8,backgroundColor:ink.paper}}>
+      {form}
+      <StudioButton title="Back to entrance" onPress={() => setEntrance(true)} />
     </View>
-  </EditorialFrame>;
-  if (enabled) return <EditorialFrame title="Welcome to ParkFair" eyebrow="RESIDENT AND SOCIETY ACCESS">
-    <MotorImage />
-    <Label>SIGN IN</Label>
-    {form}
-    <Control title="Preview entrance screen" onPress={() => setEntrance(true)} />
-  </EditorialFrame>;
+  </SignatureShell>;
   return <Screen title="Sign in to ParkFair">{form}</Screen>;
 }

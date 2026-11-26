@@ -1,5 +1,9 @@
 # Development status
 
+## Phase 5C · immersive Android preview
+
+The development switch opens a connected resident arrival with a live allocation overlay, an Eco garage and a local Premium 3D diagnostic. The API 36 emulator demonstrated orbit, synthetic two-finger pinch and return to Eco when backgrounded. SDK 58 dependency compatibility passes locally. The review records frame pacing, memory retention, actual captures, and asset and design decisions still open. [Phase 5C review](design/phase-5c/REVIEW.md)
+
 ## Phase 5B · premium native preview
 
 The native redesign is available in the running development client under **Open design preview**. Priority screens have paired light and dark Android captures. The review includes both role recordings, direct row correction and the typography, motion and imagery decisions awaiting approval. [Phase 5B native review](design/phase-5b/REVIEW.md)

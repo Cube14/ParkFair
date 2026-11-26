@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' blob:; worker-src 'self' blob:">
+<title>ParkFair 3D diagnostics</title>
+<style>
+html,body{margin:0;height:100%;background:#1e2725;color:#e7f5ec;font:14px system-ui}
+model-viewer{display:block;width:100%;height:100%;background:#1e2725}
+#status{position:absolute;top:12px;left:12px;background:#111e1deb;padding:8px;pointer-events:none}
+</style>
+<model-viewer id="model" src="ToyCar.glb" environment-image="parking_garage_1k.hdr" skybox-image="parking_garage_1k.hdr"
+  camera-controls touch-action="none" interaction-prompt="none" camera-orbit="35deg 69deg 108%" field-of-view="30deg"
+  min-camera-orbit="auto 38deg 62%" max-camera-orbit="auto 89deg 165%" shadow-intensity="0.8"
+  shadow-softness="0.8" exposure="1.1" alt="Cleared diagnostic vehicle model"></model-viewer>
+<div id="status" role="status">Loading 3D diagnostic</div>
+<script type="module" src="diagnostic.js"></script>
+<script type="module" src="viewer.js"></script>
+</html>

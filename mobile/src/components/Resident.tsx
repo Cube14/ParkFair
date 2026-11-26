@@ -6,7 +6,9 @@ import { ApiError, type ResidentAllocation } from '../api';
 import { parkingKeys, type Allocation } from '../parkingClient';
 import { useSession } from '../session';
 import { useTheme } from '../theme';
-import { ArrivalComposition, Control, Display, EditorialFrame, Label, LedgerLink, MotorImage, Note, TimelineEntry, useDesignPreview, useEditorial } from './Editorial';
+import { Control, Display, EditorialFrame, Label, LedgerLink, Note, TimelineEntry, useDesignPreview } from './Editorial';
+import { SceneStatus, SignatureHome, SignaturePlan } from './Signature';
+import { SignatureGarage } from './SignatureGarage';
 import { Action, Copy, Loading, Screen } from './Screen';
 
 const dates = (start: string, end: string) => [start, end].map(date => new Date(date)
@@ -59,6 +61,7 @@ function IllustrativePlan({ enlarged }: { enlarged: boolean }) {
 }
 
 export function ResidentParking() {
+  const router = useRouter();
   const { colors } = useTheme();
   const { enabled } = useDesignPreview();
   const { session, readCachedParking } = useSession();
@@ -79,27 +82,19 @@ export function ResidentParking() {
   const refresh = () => { void result.refetch(); void schedule.refetch(); };
   if (enabled && !plan) {
     const next = schedule.isSuccess ? schedule.data.next : null;
-    return <ArrivalComposition current={display ? {
+    return <SignatureHome current={display ? {
       bay: display.parking ? bay(display.parking.slot, display.parking.status) : 'No assignment',
       description: [current ? 'Flat ' + current.resident.flatNumber : '',
         display.parking && (display.parking.status === 'INSIDE' ? 'Covered parking' : 'Outdoor parking')].filter(Boolean).join(' · '),
       dates: display.cycle ? dates(display.cycle.startDate, display.cycle.endDate) : undefined,
     } : null} next={next && { bay: bay(next.parking.slot, next.parking.type), description: next.cycle.name,
       dates: dates(next.cycle.startDate, next.cycle.endDate) }}
-      allocationStatus={<QueryStatus query={result} />}
-      nextStatus={schedule.isSuccess ? <Note>No upcoming allocation.</Note> : <QueryStatus query={schedule} />}
-      notice={offline && snapshot.data ? 'Offline snapshot · ' + new Date(snapshot.data.syncedAt).toLocaleString() : undefined}
-      onPlan={() => setPlan(true)} onRefresh={refresh} onReconnect={offline ? refresh : undefined} />;
+      loading={<SceneStatus busy={result.isPending || (offline && snapshot.isPending)} text={result.isPending ? "Loading allocation…" : "Allocation unavailable"} />}
+      upcomingStatus={schedule.isPending ? 'Checking next allocation…' : schedule.isError ? 'Upcoming allocation unavailable' : 'No upcoming allocation'}
+      notice={offline && snapshot.data ? 'Offline snapshot · ' + new Date(snapshot.data.syncedAt).toLocaleString() + '. Confirm before parking.' : undefined}
+      onPlan={() => setPlan(true)} onRefresh={refresh} onGarage={() => router.push('/garage')} />;
   }
-  if (enabled) return <EditorialFrame title="Parking plan" eyebrow="SITE ORIENTATION" tabbed>
-    <Control title="‹  Motor Court" onPress={() => setPlan(false)} />
-    <Label>YOUR ASSIGNED BAY</Label>
-    <Display size={38}>{display?.parking ? bay(display.parking.slot, display.parking.status) : 'Assignment unavailable'}</Display>
-    {offline && snapshot.data && <Note>Offline snapshot · {new Date(snapshot.data.syncedAt).toLocaleString()}</Note>}
-    <IllustrativePlan enlarged={zoom} />
-    <Control title={zoom ? 'Fit plan' : 'Enlarge plan'} onPress={() => setZoom(!zoom)} />
-    <Note>Illustrative geometry. North row A1–A3. South row B1–B3. Entry west, exit east. Follow on-site signage for your assigned bay.</Note>
-  </EditorialFrame>;
+  if (enabled) return <SignaturePlan onReturn={() => setPlan(false)} />;
   return <Screen previewTabbed title={plan ? 'Parking plan' : 'Motor Court'}>
     {offline && snapshot.data ? <><Copy>Offline snapshot · synced {new Date(snapshot.data.syncedAt).toLocaleString()}. Confirm before parking.</Copy>
       <Action label="Reconnect" onPress={() => { void result.refetch(); void schedule.refetch(); }} /></> : <QueryStatus query={result} />}
@@ -136,16 +131,8 @@ export function ResidentGarage() {
   const result = useResidentQuery<ResidentAllocation>('/resident/dashboard');
 
   const { enabled } = useDesignPreview();
-  const c = useEditorial();
-  if (enabled) return <EditorialFrame title="Private garage" eyebrow="MOTOR COURT" tabbed>
-    <MotorImage immersive />
-    <View style={{ paddingVertical: 15, borderBottomWidth: 1, borderColor: c.rule, gap: 6 }}>
-      <Label>REGISTERED VEHICLE</Label>
-      <QueryStatus query={result} />
-      {result.isSuccess && <Display size={32}>{result.data.vehicle?.number ?? 'No vehicle registered'}</Display>}
-    </View>
-    <Note>The vehicle shown is an illustration. This preview uses a static photograph.</Note>
-  </EditorialFrame>;
+  if (enabled) return <SignatureGarage registration={result.isSuccess ? result.data.vehicle?.number : undefined}
+    status={result.isPending ? 'Loading vehicle…' : result.isError ? 'Vehicle unavailable' : undefined} />;
   return <Screen title="Private garage">
     <Image source={require('../../assets/garage-preview.jpg')} accessibilityLabel="Illustrative concept vehicle"
       resizeMode="cover" style={{ width: '100%', height: 250, backgroundColor: colors.surface }} />
