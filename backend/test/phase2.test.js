@@ -279,6 +279,10 @@ test("allocation and session HTTP workflows on an isolated replica set", {
       adminCall("/vehicles", "POST", { data: { flatId: three.id, vehicleNumber: "SYNTH-CAR-C" } }),
     ]);
     assert.ok([[200, 404], [409, 201]].some(([a, b]) => a === deleted.status && b === linked.status));
+    if (linked.status === 201) {
+      const cleanup = await Vehicle.updateOne({ flatId: three.id }, { isActive: false });
+      assert.equal(cleanup.modifiedCount, 1);
+    }
   });
 
   await t.test("inventory edits and overlap invalidate approval and validation", async () => {

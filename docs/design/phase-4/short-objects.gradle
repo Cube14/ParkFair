@@ -1,0 +1,10 @@
+gradle.beforeProject { project ->
+  if (project.path == ':app') {
+    project.plugins.withId('com.android.application') {
+      project.androidComponents.finalizeDsl { dsl ->
+        dsl.defaultConfig.externalNativeBuild.cmake.arguments.add('-DCMAKE_OBJECT_PATH_MAX=245')
+      }
+    }
+  }
+}
+

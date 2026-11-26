@@ -9,3 +9,4 @@ Phase 3 records the owner-selected exploration directions and HUD rejection in t
 | Cinematic luxury, automotive HUD, digital garage | v1 | Resident mobile | Exploration only | Pending direction for further prototypes |
 
 The previews contain synthetic information. Implementation scope, final appearance and assets remain unapproved.
+Phase 4A v1 records the selected R1 + R3 and A1 directions. Final screens, materials and motion are pending. [Review decisions](phase-4/README.md)
