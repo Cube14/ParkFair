@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' blob:; worker-src 'self' blob:">
+<title>ParkFair private garage</title>
+<style>
+html,body{margin:0;height:100%;background:var(--surface);color:var(--ink);font:14px system-ui}
+model-viewer{display:block;width:100%;height:100%;background:var(--surface)}
+</style>
+<model-viewer id="vehicle" src="porsche.glb" environment-image="parking_garage_1k.hdr"
+  camera-controls touch-action="none" interaction-prompt="none" camera-orbit="35deg 69deg 125%"
+  field-of-view="30deg" min-camera-orbit="auto 32deg 65%" max-camera-orbit="auto 90deg 180%"
+  shadow-intensity="0.8" alt="Porsche 911 Carrera 4S model by Lionsharp Studios"></model-viewer>
+<script type="module" src="garage.js"></script>
+<script type="module" src="viewer.js"></script>
+</html>

@@ -27,6 +27,7 @@ export function usePreviewMotion() {
   return enabled && !reduce;
 }
 
+// Owner-locked Phase 5B palette. Changes require explicit owner approval.
 export function useEditorial() {
   const { isDark } = useTheme();
   return isDark

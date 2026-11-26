@@ -20,3 +20,5 @@ Phase 5 supersedes Phase 4B as a visual review baseline after the owner rejected
 Phase 5B is available behind the development-only **Open design preview** switch. Its substantial layouts, mark, typography proposal, motion and imagery await owner review. [Phase 5B native captures and decision register](phase-5b/REVIEW.md)
 
 Phase 5C uses the same development switch for a new connected resident arrival. The home, entrance, transitions and targeted office proposal await review. The Android 3D diagnostic establishes renderer behavior with cleared sample assets. Production vehicle, environment, imagery, type and motion require independent approval. [Phase 5C evidence and candidates](phase-5c/REVIEW.md)
+
+**Phase 5D.1 palette locked.** The exact Phase 5B dark and light values in `Editorial.tsx` at `a9e1f3e` are the shared preview palette. Changing any value requires explicit owner approval. The resident garage uses the illustrative photograph while the Porsche download is pending. ToyCar is confined to the isolated diagnostic page. [Correction and asset record](phase-5d.1/REVIEW.md)

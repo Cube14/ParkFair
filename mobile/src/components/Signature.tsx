@@ -3,21 +3,20 @@ import { ActivityIndicator, Animated, Image, PanResponder, Pressable, ScrollView
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AdminOccupancy } from '../api';
 import { useTheme } from '../theme';
-import { useDesignPreview, usePreviewMotion, type ParkingPanel } from './Editorial';
+import { useDesignPreview, useEditorial, usePreviewMotion, type ParkingPanel } from './Editorial';
 import { TabGlyph } from './TabGlyph';
 
 export function useSignaturePalette() {
-  const { isDark } = useTheme();
-  return isDark ? { paper:'#101818', panel:'#1A2725', ink:'#E7F1EC', muted:'#ADC1B9', line:'#3D5952', signal:'#A9E7CF' } :
-    { paper:'#E9F0EB', panel:'#F5F8F4', ink:'#122D29', muted:'#3D5D53', line:'#A7BCB2', signal:'#12664F' };
+  const { paper,stone,rule,ink,muted,gold,plate } = useEditorial();
+  return {paper,panel:stone,line:rule,ink,muted,signal:gold,plate};
 }
 
 export function StudioButton({ title, onPress, bright = false }: { title:string; onPress:()=>void; bright?:boolean }) {
   const c = useSignaturePalette();
   return <Pressable accessibilityRole="button" onPress={onPress} style={({pressed}) => ({
     minHeight:48, paddingHorizontal:13, justifyContent:'center', alignSelf:'flex-start',
-    backgroundColor:bright ? '#C1EBDD' : 'transparent', borderRadius:4, opacity:pressed ? 0.7 : 1,
-  })}><Text style={{color:bright ? '#0B2B22' : c.signal, fontWeight:'700',fontSize:14}}>{title}</Text></Pressable>;
+    backgroundColor:bright ? c.signal : 'transparent', borderRadius:4, opacity:pressed ? 0.7 : 1,
+  })}><Text style={{color:bright ? c.paper : c.signal, fontWeight:'700',fontSize:14}}>{title}</Text></Pressable>;
 }
 
 export function SignatureShell({ children, tabbed = false, title }: { children: ReactNode; tabbed?: boolean; title:string }) {
@@ -43,6 +42,7 @@ export function SignatureShell({ children, tabbed = false, title }: { children: 
 export function Scene({ title, label, children, full = false, responsive = false, entrance = false }: {
   title:string; label:string; children?:ReactNode; full?:boolean; responsive?:boolean; entrance?:boolean;
 }) {
+  const c = useSignaturePalette();
   const motion = usePreviewMotion();
   const viewport = useWindowDimensions();
   const [progress] = useState(() => new Animated.Value(1));
@@ -62,16 +62,16 @@ export function Scene({ title, label, children, full = false, responsive = false
     onPanResponderTerminate: () => x.setValue(0),
   }),[active,x]);
   return <View style={{minHeight:entrance ? Math.max(460, viewport.height * .78) : full ? 460 : 300,
-    backgroundColor:'#131D1C', overflow:'hidden'}} {...pan.panHandlers}>
+    backgroundColor:c.plate, overflow:'hidden'}} {...pan.panHandlers}>
     <Animated.View style={[StyleSheet.absoluteFill,{opacity:progress.interpolate({inputRange:[0,1],outputRange:[.55,1]}),
       transform:active ? [{translateX:x},{scale:1.17}] : [{scale:1.04}]}]}>
       <Image source={require('../../assets/garage-preview.jpg')} resizeMode="cover"
         accessibilityLabel="Illustrative architectural garage photograph" style={{width:'100%',height:'100%'}} />
     </Animated.View>
-    <Animated.View pointerEvents="none" style={[styles.sceneTop,{backgroundColor:'#10201EDB',opacity:progress,
+    <Animated.View pointerEvents="none" style={[styles.sceneTop,{backgroundColor:c.panel,opacity:progress,
       transform:[{translateY:progress.interpolate({inputRange:[0,1],outputRange:[9,0]})}]}]}>
-      <Text style={styles.sceneLabel}>{label}</Text>
-      <Text accessibilityRole="header" style={styles.sceneTitle}>{title}</Text>
+      <Text style={[styles.sceneLabel,{color:c.signal}]}>{label}</Text>
+      <Text accessibilityRole="header" style={[styles.sceneTitle,{color:c.ink}]}>{title}</Text>
     </Animated.View>
     {!!children && <View style={styles.sceneBottom}>{children}</View>}
   </View>;
@@ -83,18 +83,22 @@ export function SignatureHome({ current,next,notice,loading,upcomingStatus,onGar
 }) {
   const c = useSignaturePalette();
   return <SignatureShell title="Motor Court" tabbed>
-    <Scene title="Motor Court" label="PARKING  /  RESIDENCE" full responsive>
-      <View style={styles.panel}>
-        <Text style={styles.sceneLabel}>CURRENT PARKING</Text>
+    <View style={{paddingHorizontal:20,paddingTop:18,paddingBottom:10,gap:4}}>
+      <Text style={[styles.sceneLabel,{color:c.signal}]}>RESIDENT PARKING</Text>
+      <Text accessibilityRole="header" style={[styles.sceneTitle,{color:c.ink}]}>Motor Court</Text>
+    </View>
+    <VehiclePortrait height={218} />
+    <View style={[styles.ledger,{alignItems:'center',backgroundColor:c.panel,borderColor:c.line}]}>
+      <View style={{flex:1,gap:5}}>
+        <Text style={[styles.sceneLabel,{color:c.signal}]}>CURRENT PARKING</Text>
         {current ? <>
-          <Text style={styles.bay}>{current.bay}</Text>
-          <Text style={styles.white}>{current.description}</Text>
-          <Text style={styles.white}>{current.dates}</Text>
+          <Text style={{color:c.ink}}>{current.description}</Text>
+          <Text style={{color:c.muted}}>{current.dates}</Text>
         </> : loading}
-        {!!notice && <Text style={styles.white}>{notice}</Text>}
-        <StudioButton title="Enter private garage  ↗" bright onPress={onGarage}/>
+        {!!notice && <Text style={{color:c.muted}}>{notice}</Text>}
       </View>
-    </Scene>
+      {!!current && <Text style={[styles.bay,{color:c.ink}]}>{current.bay}</Text>}
+    </View>
     <View style={[styles.ledger,{backgroundColor:c.panel,borderColor:c.line}]}>
       <View style={{flex:1,gap:5}}>
         <Text style={{color:c.signal,letterSpacing:2,fontWeight:'800',fontSize:11}}>UPCOMING</Text>
@@ -104,6 +108,7 @@ export function SignatureHome({ current,next,notice,loading,upcomingStatus,onGar
       {!!next && <Text style={{fontSize:32,fontWeight:'300',color:c.ink}}>{next.bay}</Text>}
     </View>
     <View style={[styles.actions,{paddingHorizontal:8}]}>
+      <StudioButton title="Enter private garage  ↗" onPress={onGarage}/>
       <StudioButton title="Parking plan" onPress={onPlan}/>
       <StudioButton title="Refresh allocation" onPress={onRefresh}/>
     </View>
@@ -133,8 +138,8 @@ export function SignaturePlan({ onReturn }: { onReturn:()=>void }) {
               </View>}
               <View style={{flexDirection:'row'}}>
                 {demoBays.slice(start,start+4).map(bay=><View key={bay} style={{flex:1,height:large?140:95,
-                  backgroundColor:bay==='A-12' ? '#C1EBDD' : c.paper,borderWidth:1,borderColor:c.line,justifyContent:'center',alignItems:'center'}}>
-                  <Text style={{color:bay==='A-12'?'#0B2B22':c.ink,fontWeight:'700'}}>{bay}</Text>
+                  backgroundColor:bay==='A-12' ? c.signal : c.paper,borderWidth:1,borderColor:c.line,justifyContent:'center',alignItems:'center'}}>
+                  <Text style={{color:bay==='A-12'?c.paper:c.ink,fontWeight:'700'}}>{bay}</Text>
                 </View>)}
               </View>
             </View>)}
@@ -145,9 +150,18 @@ export function SignaturePlan({ onReturn }: { onReturn:()=>void }) {
   </SignatureShell>;
 }
 
+export function VehiclePortrait({height}: {height:number}) {
+  const c = useSignaturePalette();
+  return <View style={{height,backgroundColor:c.plate}}>
+    <Image source={require('../../assets/garage-preview.jpg')} resizeMode="contain"
+      accessibilityLabel="Illustrative architectural garage photograph" style={{width:'100%',height:'100%'}}/>
+  </View>;
+}
+
 export function SceneStatus({ busy, text }: {busy:boolean;text:string}) {
+  const c = useSignaturePalette();
   return <View accessible accessibilityLiveRegion="polite" style={{flexDirection:'row',gap:8,alignItems:'center'}}>
-    {busy && <ActivityIndicator color="#B3E7D3"/>}<Text style={styles.white}>{text}</Text>
+    {busy && <ActivityIndicator color={c.signal}/>}<Text style={{color:c.ink,fontSize:14}}>{text}</Text>
   </View>;
 }
 
@@ -198,11 +212,9 @@ const styles = StyleSheet.create({
   mark:{width:29,height:29,alignItems:'center',justifyContent:'center',borderRadius:4},
   actions:{flexDirection:'row',flexWrap:'wrap'},
   sceneTop:{alignSelf:'flex-start',paddingHorizontal:18,paddingVertical:12,marginTop:17},
-  sceneLabel:{color:'#C1EBDD',fontWeight:'800',fontSize:10,letterSpacing:2.4},
-  sceneTitle:{color:'#FCFDF9',fontSize:32,fontWeight:'600',letterSpacing:-.9},
+  sceneLabel:{fontWeight:'800',fontSize:10,letterSpacing:2.4},
+  sceneTitle:{fontSize:32,fontWeight:'600',letterSpacing:-.9},
   sceneBottom:{marginTop:'auto',padding:16,alignItems:'stretch'},
-  panel:{backgroundColor:'#0E211FEE',padding:14,gap:5,borderLeftWidth:3,borderLeftColor:'#C1EBDD',maxWidth:380},
-  bay:{color:'#F9FDF9',fontSize:59,fontWeight:'300',letterSpacing:-3},
-  white:{color:'#E0EDE6',fontSize:14},
+  bay:{fontSize:44,fontWeight:'300',letterSpacing:-3},
   ledger:{padding:16,gap:8,flexDirection:'row',alignItems:'center',borderBottomWidth:1},
 });

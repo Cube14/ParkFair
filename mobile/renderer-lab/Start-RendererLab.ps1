@@ -1,10 +1,25 @@
-param([string]$AssetDirectory = (Join-Path $env:TEMP 'parkfair-material-study'))
+param(
+    [string]$AssetDirectory = (Join-Path $env:TEMP 'parkfair-material-study'),
+    [string]$PorscheGlb
+)
 $ErrorActionPreference='Stop'
 $assetDirectory = (Resolve-Path $AssetDirectory).Path
 $stage=Join-Path $env:TEMP 'parkfair-5c-renderer'
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
 foreach ($name in 'ToyCar.glb','viewer.js') { Copy-Item (Join-Path $assetDirectory $name) $stage }
-foreach ($name in 'index.html','diagnostic.js') { Copy-Item (Join-Path $PSScriptRoot $name) $stage }
+foreach ($name in 'index.html','diagnostic.js','garage.html','garage.js') { Copy-Item (Join-Path $PSScriptRoot $name) $stage }
+if ($PorscheGlb) {
+    # Supply the authorized Lionsharp Studios Porsche download as a self-contained GLB.
+    $file = (Resolve-Path -LiteralPath $PorscheGlb).Path
+    $stream = [IO.File]::OpenRead($file)
+    try {
+        $header = [byte[]]::new(4)
+        if ($stream.Read($header,0,4) -ne 4 -or [Text.Encoding]::ASCII.GetString($header) -cne 'glTF') {
+            throw 'Expected the authorized Porsche as a GLB file.'
+        }
+    } finally { $stream.Dispose() }
+    Copy-Item -LiteralPath $file -Destination (Join-Path $stage 'porsche.glb')
+}
 if (!(Test-Path (Join-Path $stage 'parking_garage_1k.hdr'))) {
     $file=(Invoke-RestMethod 'https://api.polyhaven.com/files/parking_garage').hdri.'1k'.hdr
     $dest=Join-Path $stage 'parking_garage_1k.hdr'
