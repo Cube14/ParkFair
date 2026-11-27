@@ -25,6 +25,7 @@ function revealWhenReady() {
   if (motion) vehicle.jumpCameraToGoal();
   else resetCamera();
   requestAnimationFrame(() => requestAnimationFrame(() => {
+    performance.mark('parkfair-garage-ready');
     window.ReactNativeWebView?.postMessage('garage-ready');
     if (motion) resetCamera();
   }));
@@ -52,3 +53,8 @@ if (exposure === 'evening' || exposure === 'daylight') vehicle.setAttribute('exp
 vehicle.setAttribute('src', colors.get('arch') === 'showroom' ? 'garage-showroom.glb' : 'garage-brutalist.glb');
 window.parkfairResetCamera = () => resetCamera();
 window.addEventListener('pagehide', () => vehicle.remove(), {once:true});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  vehicle.remove();
+  window.ReactNativeWebView?.postMessage('garage-suspended');
+});

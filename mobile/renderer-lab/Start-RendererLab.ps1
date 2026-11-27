@@ -1,13 +1,25 @@
 param(
     [string]$AssetDirectory = (Join-Path $env:TEMP 'parkfair-material-study'),
-    [string]$PorscheGlb
+    [string]$PorscheGlb,
+    [switch]$CompactTextures
 )
 $ErrorActionPreference='Stop'
 $assetDirectory = (Resolve-Path $AssetDirectory).Path
 $stage=Join-Path $env:TEMP 'parkfair-5c-renderer'
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
+if ($CompactTextures -and !(Test-Path -LiteralPath (Join-Path $stage 'garage-brutalist-compact.glb'))) {
+    throw 'Generate garage-brutalist-compact.glb with compact_garage.py before opting in.'
+}
 foreach ($name in 'ToyCar.glb','viewer.js') { Copy-Item (Join-Path $assetDirectory $name) $stage }
 foreach ($name in 'index.html','diagnostic.js','garage.html','garage.js') { Copy-Item (Join-Path $PSScriptRoot $name) $stage }
+if ($CompactTextures) {
+    $script = Get-Content -LiteralPath (Join-Path $stage 'garage.js') -Raw
+    $script.Replace("'garage-brutalist.glb'", "'garage-brutalist-compact.glb'") |
+        Set-Content -LiteralPath (Join-Path $stage 'garage-compact-study.js') -Encoding utf8
+    $page = Get-Content -LiteralPath (Join-Path $stage 'garage.html') -Raw
+    $page.Replace('garage.js?', 'garage-compact-study.js?') |
+        Set-Content -LiteralPath (Join-Path $stage 'garage.html') -Encoding utf8
+}
 if ($PorscheGlb) {
     # Supply the authorized Lionsharp Studios Porsche download as a self-contained GLB.
     $file = (Resolve-Path -LiteralPath $PorscheGlb).Path

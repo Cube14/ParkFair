@@ -2,10 +2,10 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Animated, Easing, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useTheme } from '../theme';
 import { Control, Display, useEditorial, usePreviewMotionPreference } from './Editorial';
-import { SignatureShell } from './Signature';
+import { garagePosterUri, SignatureShell } from './Signature';
 
 // Local evaluation still from the Phase 5D.5 Porsche and Brutalist composition.
-const entranceStill = { uri: 'http://127.0.0.1:8174/garage-brutalist-light.jpg?scene=5d9' };
+const entranceStill = { uri: garagePosterUri(false) };
 
 export function CinematicArrival({ children }: { children: ReactNode }) {
   const palette = useEditorial();

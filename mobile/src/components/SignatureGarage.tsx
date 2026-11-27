@@ -3,10 +3,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { Display, usePreviewMotion } from './Editorial';
-import { PorschePoster, SignatureShell, StudioButton, usePorscheViewport, useSignaturePalette } from './Signature';
+import { garageLab as lab, PorschePoster, SignatureShell, StudioButton, usePorscheViewport, useSignaturePalette } from './Signature';
 import { useTheme } from '../theme';
-
-const lab = 'http://127.0.0.1:8174/';
 
 export function SignatureGarage({ registration, status }: {registration?:string;status?:string}) {
   const c = useSignaturePalette();
@@ -57,7 +55,8 @@ export function SignatureGarage({ registration, status }: {registration?:string;
 
   useEffect(() => {
     const handler = AppState.addEventListener('change',state => { if (state !== 'active') close(); });
-    return () => handler.remove();
+    const blur = Platform.OS === 'android' ? AppState.addEventListener('blur', close) : undefined;
+    return () => { handler.remove(); blur?.remove(); };
   },[close]);
   useEffect(() => {
     if (!interactive || ready) return;
@@ -104,6 +103,7 @@ export function SignatureGarage({ registration, status }: {registration?:string;
             setReadyScene(options);
           }
           if (nativeEvent.data === 'garage-failed') fallback();
+          if (nativeEvent.data === 'garage-suspended') close();
         }}/>
       <Animated.View pointerEvents={ready?'none':'auto'} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
         style={[StyleSheet.absoluteFill,{opacity:ready?posterOpacity:1}]}>

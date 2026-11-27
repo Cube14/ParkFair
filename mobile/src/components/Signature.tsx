@@ -150,13 +150,17 @@ export function usePorscheViewport() {
   return Math.max(270, Math.min(460, Math.round(height * .385)));
 }
 
+export const garageLab = 'http://127.0.0.1:8174/';
+export const garagePosterUri = (isDark: boolean) => garageLab + 'garage-brutalist-' + (isDark ? 'dark' : 'light') + '.jpg';
+
 // These local evaluation stills are captured from the same model-viewer camera.
 export function PorschePoster() {
   const c = useSignaturePalette();
   const {isDark} = useTheme();
   const height = usePorscheViewport();
-  const uri = 'http://127.0.0.1:8174/garage-brutalist-' + (isDark ? 'dark' : 'light') + '.jpg';
+  const uri = garagePosterUri(isDark);
   const [failed,setFailed] = useState('');
+  useFocusEffect(useCallback(() => { setFailed(''); }, []));
   return <View style={{height,justifyContent:'center',backgroundColor:c.plate}}>
     {failed === uri ? <VehiclePortrait /> : <Image key={uri} source={{uri}} fadeDuration={0} resizeMode="cover"
       accessibilityLabel="Illustrative Porsche in the ParkFair garage"
