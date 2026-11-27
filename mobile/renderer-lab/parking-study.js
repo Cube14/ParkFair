@@ -87,6 +87,7 @@ async function setup() {
   const response = await fetch('parkingStudy.json?v=6b1');
   if (!response.ok) throw new Error('Study layout unavailable');
   const layout = await response.json();
+  if (layout.approvedFor3D !== true) throw new Error('The schematic is awaiting approval for 3D use');
   if (closed) return;
   const { x, z, bays } = studyCoordinates(layout);
   const markers = new Map();

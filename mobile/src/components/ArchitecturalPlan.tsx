@@ -1,14 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { PanResponder, Platform, Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import { PanResponder, Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 import layout from '../data/parkingStudy.json';
 import { Control, Display, Label, Note, useEditorial } from './Editorial';
-import { ParkingStudyViewport } from './ParkingStudyViewport';
 import { SignatureShell, StudioButton } from './Signature';
-import { useTheme } from '../theme';
 
 const { drawing, positions } = layout;
-const areaStyle = ({ x, y, width, depth }: typeof layout.covered) => ({ left: x, top: y, width, height: depth });
+const areaStyle = ({ x, y, width, depth }: typeof layout.building) => ({ left: x, top: y, width, height: depth });
+const drawingHeight = 370;
 const clamp = (value: number, limit: number) => Math.max(-limit, Math.min(limit, value));
 type Camera = { zoom: number; x: number; y: number };
 const fitted: Camera = { zoom: 1, x: 0, y: 0 };
@@ -23,23 +22,20 @@ function touchCenter(event: GestureResponderEvent) {
 
 export function ArchitecturalPlan({ onReturn, allocation }: { onReturn: () => void; allocation?: string | null }) {
   const c = useEditorial();
-  const { isDark } = useTheme();
-  const [size, setSize] = useState({ width: 0, height: 340 });
+  const [size, setSize] = useState({ width: 0, height: drawingHeight });
   const [camera, setCamera] = useState(fitted);
   const current = useRef(fitted);
   const gesture = useRef<ReturnType<typeof touchCenter>>(undefined);
   const [dragging, setDragging] = useState(false);
-  const [mode, setMode] = useState<'drawing' | 'study' | 'list'>('drawing');
-  const [studyError, setStudyError] = useState(false);
+  const [mode, setMode] = useState<'drawing' | 'list'>('drawing');
   const [manual, setSelected] = useState<string>();
   const assigned = positions.find(bay => bay.name === allocation)?.name;
   const selected = manual ?? assigned;
   const selectedBay = positions.find(bay => bay.name === selected);
   const info = selectedBay?.position === 'A' ? 'Inner tandem position' : selectedBay?.position === 'B' ? 'Outer tandem position' :
     selectedBay?.position === 'FULL' ? 'Whole flex slot' : selectedBay?.area === 'Outdoor' ? 'Perpendicular outdoor bay' : 'Covered parking';
-  const closeStudy = useCallback(() => { setMode('drawing'); setDragging(false); }, [setMode, setDragging]);
-  const failStudy = useCallback(() => { closeStudy(); setStudyError(true); }, [closeStudy, setStudyError]);
-  useFocusEffect(useCallback(() => closeStudy, [closeStudy]));
+  const showDrawing = useCallback(() => { setMode('drawing'); setDragging(false); }, [setMode, setDragging]);
+  useFocusEffect(useCallback(() => showDrawing, [showDrawing]));
   const fit = Math.min(size.width / drawing.width, size.height / drawing.height);
   const scale = fit * camera.zoom;
   const setView = useMemo(() => (zoom: number, x: number, y: number) => {
@@ -81,19 +77,15 @@ export function ArchitecturalPlan({ onReturn, allocation }: { onReturn: () => vo
     </View>
     <View style={{ marginHorizontal: 12, borderWidth: 1, borderColor: c.rule, backgroundColor: c.stone }}>
       <View style={{ flexDirection: 'row', gap: 14, flexWrap: 'wrap', paddingHorizontal: 10 }}>
-        {Platform.OS === 'android' && <Control title="3D study" emphasis={mode === 'study'} onPress={() => { setStudyError(false); setMode('study'); }} />}
-        <Control title="2D drawing" emphasis={mode === 'drawing'} onPress={closeStudy} />
+        <Control title="2D drawing" emphasis={mode === 'drawing'} onPress={showDrawing} />
         <Control title="Accessible bay list" emphasis={mode === 'list'} onPress={() => { setDragging(false); setMode('list'); }} />
       </View>
-      {studyError && mode === 'drawing' && <View style={{paddingHorizontal:12}}><Note>3D study unavailable. The 2D drawing and bay list are available.</Note></View>}
       {mode === 'drawing' && <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', paddingHorizontal: 10 }}>
           <Control title="Zoom out" disabled={camera.zoom <= 1} onPress={() => setView(camera.zoom / 1.35, camera.x, camera.y)} />
           <Control title="Zoom in" disabled={camera.zoom >= 2.7} onPress={() => setView(camera.zoom * 1.35, camera.x, camera.y)} />
           <Control title="Fit plan" onPress={() => setView(1, 0, 0)} />
       </View>}
-      {mode === 'study' ? <ParkingStudyViewport key={isDark ? 'dark' : 'light'} selected={selected} assigned={assigned} onSelection={name => {
-        if (positions.some(bay => bay.name === name)) setSelected(name);
-      }} onDragging={setDragging} onClose={closeStudy} onError={failStudy} /> : mode === 'list' ? <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+      {mode === 'list' ? <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
         {positions.map(bay => <Pressable key={bay.name} accessibilityRole="button" accessibilityState={{ selected: bay.name === selected }}
           onPress={() => setSelected(bay.name)} style={{ minHeight: 46, justifyContent: 'center', borderTopWidth: 1, borderColor: c.rule }}>
           <Note>{bay.name} · {bay.area}{bay.name === assigned ? ' · Your current allocation' : ''}</Note>
@@ -101,20 +93,30 @@ export function ArchitecturalPlan({ onReturn, allocation }: { onReturn: () => vo
       </View> : <View onLayout={event => {
         const { width, height } = event.nativeEvent.layout;
         if (width !== size.width || height !== size.height) { setSize({ width, height }); current.current = fitted; setCamera(fitted); }
-      }} {...pan.panHandlers} accessibilityLabel="Synthetic top-down plan" style={{ height: 340, overflow: 'hidden', backgroundColor: c.paper, borderTopWidth: 1, borderColor: c.rule }}>
+      }} {...pan.panHandlers} accessibilityLabel="Siddha-A top-down plan, not to scale" style={{ height: drawingHeight, overflow: 'hidden', backgroundColor: c.paper, borderTopWidth: 1, borderColor: c.rule }}>
         {!!fit && <View style={{ position: 'absolute', width: drawing.width, height: drawing.height,
           left: (size.width - drawing.width) / 2 + camera.x, top: (size.height - drawing.height) / 2 + camera.y, transform: [{ scale }] }}>
-          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.building), { backgroundColor: c.plate, borderWidth: 1, borderColor: c.rule, alignItems: 'center', justifyContent: 'center' }]}>
-            <Text style={[styles.label, { color: c.ink }]}>Siddha-A</Text>
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.building), { backgroundColor: c.plate, borderWidth: 1, borderStyle: 'dashed', borderColor: c.muted, justifyContent: 'center', paddingLeft: 8 }]}>
+            <Text style={[styles.buildingName, { color: c.ink }]}>Siddha-A</Text>
+            <Text style={[styles.annotation, { color: c.muted }]}>PARKING BELOW</Text>
           </View>
-          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.outdoor), { backgroundColor: c.plate, borderWidth: 1, borderColor: c.rule }]} />
-          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.connector), { backgroundColor: c.plate }]} />
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.otherBuilding), styles.centred, { backgroundColor: c.stone, borderWidth: 1, borderColor: c.rule }]}>
+            <Text style={[styles.buildingName, { color: c.muted }]}>Other building</Text>
+            <Text style={[styles.annotation, { color: c.muted }]}>CONTEXT ONLY</Text>
+          </View>
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.walkway), styles.centred, { backgroundColor: c.stone, borderTopWidth: 1, borderBottomWidth: 1, borderColor: c.muted, borderStyle: 'dashed' }]}>
+            <Text style={[styles.label, { color: c.ink }]}>Pedestrian walkway</Text>
+          </View>
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.entrance), styles.centred, { backgroundColor: c.plate }]}>
+            <Text style={[styles.label, { color: c.ink }]}>Entrance</Text>
+          </View>
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.gate), styles.centred, { backgroundColor: c.gold }]}>
+            <Text style={[styles.annotation, { color: c.paper }]}>GATE</Text>
+          </View>
           <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.aisle), { backgroundColor: c.plate, alignItems: 'center', justifyContent: 'space-around' }]}>
-            <Text style={[styles.label, { color: c.gold }]}>Entrance</Text>
-            {[0, 1, 2, 3, 4].map(index => <Text key={index} style={{ color: c.muted, fontSize: 17 }}>↑ ↓</Text>)}
+            {[0, 1, 2, 3].map(index => <Text key={index} style={{ color: c.muted, fontSize: 18 }}>↑  ↓</Text>)}
+            <Text style={[styles.label, { color: c.ink, textAlign: 'center' }]}>{'Two-way\ndriveway'}</Text>
           </View>
-          {layout.columns.map(column => <View key={column.x + ':' + column.y} pointerEvents="none"
-            style={[styles.absolute, { left: column.x - 3, top: column.y - 3, width: 6, height: 6, backgroundColor: c.muted }]} />)}
           {layout.bays.map(bay => {
             const flex = 'flex' in bay && bay.flex;
             const choices = flex ? [bay.name + 'A', bay.name + 'B'] : [];
@@ -124,8 +126,7 @@ export function ArchitecturalPlan({ onReturn, allocation }: { onReturn: () => vo
               <Pressable accessibilityRole="button" accessibilityLabel={bay.name + ', ' + bay.area}
                 accessibilityState={{selected: selected === bay.name}} onPress={() => setSelected(bay.name)}
                 style={{flex:1, alignItems:'center', justifyContent:'center', backgroundColor:highlight ? c.gold : c.paper}}>
-                <Text numberOfLines={1} maxFontSizeMultiplier={1.25} style={[styles.label,{color:highlight ? c.paper : c.ink},
-                  bay.area === 'Outdoor' && {width:58,textAlign:'center',transform:[{rotate:'-90deg'}]}]}>{bay.name}</Text>
+                <Text numberOfLines={1} maxFontSizeMultiplier={1.25} style={[styles.label,{color:highlight ? c.paper : c.ink}]}>{bay.name}</Text>
               </Pressable>
               {flex && <View style={{flex:1,flexDirection:'row',borderTopWidth:1,borderColor:c.rule}}>
                 {choices.map(name => <Pressable key={name} accessibilityRole="button" accessibilityLabel={name}
@@ -140,15 +141,21 @@ export function ArchitecturalPlan({ onReturn, allocation }: { onReturn: () => vo
         </View>}
       </View>}
     </View>
-    <View accessibilityLiveRegion="polite" style={{ margin: 12, padding: 12, gap: 6, backgroundColor: c.stone, borderStartWidth: 2, borderColor: c.gold,
-      ...(mode === 'study' && { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }) }}>
+    <View accessibilityLiveRegion="polite" style={{ margin: 12, padding: 12, gap: 8, flexDirection: 'row', flexWrap: 'wrap',
+      alignItems: 'center', justifyContent: 'space-between', backgroundColor: c.stone, borderStartWidth: 2, borderColor: c.gold }}>
       <View>
         <Label>{selected && selected === assigned ? 'YOUR CURRENT ALLOCATION' : selected ? 'SELECTED POSITION' : 'CURRENT ALLOCATION'}</Label>
-        <Display size={mode === 'study' ? 24 : 28}>{selected ?? (allocation ? 'Outside this schematic' : 'No current bay')}</Display>
+        <Display size={28}>{selected ?? (allocation ? 'Outside this schematic' : 'No current bay')}</Display>
       </View>
       <Note>{selectedBay ? info : allocation || 'Select a position to inspect it.'}</Note>
     </View>
   </SignatureShell>;
 }
 
-const styles = StyleSheet.create({ absolute: { position: 'absolute' }, label: { fontSize: 11, fontWeight: '700', letterSpacing: .4 } });
+const styles = StyleSheet.create({
+  absolute: { position: 'absolute' },
+  centred: { alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 11, fontWeight: '700' },
+  annotation: { fontSize: 9, fontWeight: '700', letterSpacing: .5 },
+  buildingName: { fontFamily: 'serif', fontSize: 17 },
+});
