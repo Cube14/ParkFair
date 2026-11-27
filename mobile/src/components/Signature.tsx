@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Animated, Image, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AdminOccupancy } from '../api';
@@ -84,13 +85,33 @@ export function SignatureHome({ current,next,notice,loading,upcomingStatus,onGar
   onGarage:()=>void; onPlan:()=>void; onRefresh:()=>void;
 }) {
   const c = useSignaturePalette();
+  const motion = usePreviewMotion();
+  const [currentReveal] = useState(() => new Animated.Value(1));
+  const [nextReveal] = useState(() => new Animated.Value(1));
+  useFocusEffect(useCallback(() => {
+    if (!motion) {
+      currentReveal.setValue(1);
+      nextReveal.setValue(1);
+      return;
+    }
+    currentReveal.setValue(0);
+    nextReveal.setValue(0);
+    const reveal = Animated.stagger(65, [currentReveal, nextReveal].map(value =>
+      Animated.timing(value,{toValue:1,duration:230,useNativeDriver:true})));
+    reveal.start();
+    return () => reveal.stop();
+  },[currentReveal,motion,nextReveal]));
+  const revealStyle = (value: Animated.Value) => ({
+    opacity:value.interpolate({inputRange:[0,1],outputRange:[.78,1]}),
+    transform:[{translateY:value.interpolate({inputRange:[0,1],outputRange:[6,0]})}],
+  });
   return <SignatureShell title="Motor Court" tabbed>
-    <View style={{paddingHorizontal:20,paddingTop:18,paddingBottom:10,gap:4}}>
+    <View style={{paddingHorizontal:20,paddingTop:12,paddingBottom:9,gap:3}}>
       <Text style={[styles.sceneLabel,{color:c.signal}]}>RESIDENT PARKING</Text>
       <Text accessibilityRole="header" style={[styles.sceneTitle,{color:c.ink}]}>Motor Court</Text>
     </View>
-    <VehiclePortrait />
-    <View style={[styles.ledger,{alignItems:'center',backgroundColor:c.panel,borderColor:c.line}]}>
+    <PorschePoster />
+    <Animated.View style={[styles.ledger,{alignItems:'center',backgroundColor:c.panel,borderColor:c.line},revealStyle(currentReveal)]}>
       <View style={{flex:1,gap:5}}>
         <Text style={[styles.sceneLabel,{color:c.signal}]}>CURRENT PARKING</Text>
         {current ? <>
@@ -100,15 +121,15 @@ export function SignatureHome({ current,next,notice,loading,upcomingStatus,onGar
         {!!notice && <Text style={{color:c.muted}}>{notice}</Text>}
       </View>
       {!!current && <Text style={[styles.bay,{color:c.ink}]}>{current.bay}</Text>}
-    </View>
-    <View style={[styles.ledger,{backgroundColor:c.panel,borderColor:c.line}]}>
+    </Animated.View>
+    <Animated.View style={[styles.ledger,{backgroundColor:c.panel,borderColor:c.line},revealStyle(nextReveal)]}>
       <View style={{flex:1,gap:5}}>
         <Text style={{color:c.signal,letterSpacing:2,fontWeight:'800',fontSize:11}}>UPCOMING</Text>
         <Text style={{color:c.ink,fontWeight:'600'}}>{next?.description ?? upcomingStatus}</Text>
         {!!next?.dates && <Text style={{color:c.muted}}>{next.dates}</Text>}
       </View>
       {!!next && <Text style={{fontFamily:'serif',fontSize:32,color:c.ink}}>{next.bay}</Text>}
-    </View>
+    </Animated.View>
     <View style={[styles.actions,{paddingHorizontal:8}]}>
       <StudioButton title="Enter private garage  ↗" onPress={onGarage}/>
       <StudioButton title="Parking plan" onPress={onPlan}/>
@@ -157,6 +178,25 @@ export function VehiclePortrait() {
   return <View style={{width:'100%',aspectRatio:1080 / 608,backgroundColor:c.plate}}>
     <Image source={require('../../assets/garage-preview.jpg')} resizeMode="contain"
       accessibilityLabel="Illustrative architectural garage photograph" style={{width:'100%',height:'100%'}}/>
+  </View>;
+}
+
+export function usePorscheViewport() {
+  const {height} = useWindowDimensions();
+  return Math.max(270, Math.min(460, Math.round(height * .385)));
+}
+
+// These local evaluation stills are captured from the same model-viewer camera.
+export function PorschePoster() {
+  const c = useSignaturePalette();
+  const {isDark} = useTheme();
+  const height = usePorscheViewport();
+  const uri = 'http://127.0.0.1:8174/porsche-' + (isDark ? 'dark' : 'light') + '.jpg?v=android2';
+  const [failed,setFailed] = useState('');
+  return <View style={{height,justifyContent:'center',backgroundColor:c.plate}}>
+    {failed === uri ? <VehiclePortrait /> : <Image key={uri} source={{uri}} fadeDuration={0} resizeMode="cover"
+      accessibilityLabel="Illustrative Porsche in the ParkFair garage"
+      onError={()=>setFailed(uri)} style={{width:'100%',height:'100%'}}/>}
   </View>;
 }
 
