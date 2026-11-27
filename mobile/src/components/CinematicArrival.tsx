@@ -5,7 +5,7 @@ import { Control, Display, useEditorial, usePreviewMotionPreference } from './Ed
 import { SignatureShell } from './Signature';
 
 // Local evaluation still from the Phase 5D.5 Porsche and Brutalist composition.
-const entranceStill = { uri: 'http://127.0.0.1:8174/garage-brutalist-light.jpg' };
+const entranceStill = { uri: 'http://127.0.0.1:8174/garage-brutalist-light.jpg?scene=5d9' };
 
 export function CinematicArrival({ children }: { children: ReactNode }) {
   const palette = useEditorial();
@@ -14,6 +14,7 @@ export function CinematicArrival({ children }: { children: ReactNode }) {
   const { height } = useWindowDimensions();
   const [finished, setFinished] = useState(false);
   const [imageReady, setImageReady] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const [keyboard, setKeyboard] = useState(false);
   const [arrival] = useState(() => new Animated.Value(0));
   const [form] = useState(() => new Animated.Value(0));
@@ -27,11 +28,13 @@ export function CinematicArrival({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!showIntro) return;
-    if (!imageReady) {
-      const timeout = setTimeout(() => setFinished(true), 900);
-      return () => clearTimeout(timeout);
-    }
+    if (imageReady || imageFailed) return;
+    const timeout = setTimeout(() => { setImageFailed(true); setFinished(true); }, 900);
+    return () => clearTimeout(timeout);
+  }, [imageReady, imageFailed]);
+
+  useEffect(() => {
+    if (!showIntro || !imageReady) return;
     const reveal = Animated.timing(arrival, {
       toValue: 1, duration: 3100, easing: Easing.inOut(Easing.quad), useNativeDriver: true,
     });
@@ -64,10 +67,10 @@ export function CinematicArrival({ children }: { children: ReactNode }) {
 
   return <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <SignatureShell title="ParkFair access">
-      {!keyboard && <Animated.View style={{ height: heroHeight, overflow: 'hidden', backgroundColor: isDark ? palette.paper : palette.ink }}>
+      {!keyboard && !imageFailed && <Animated.View style={{ height: heroHeight, overflow: 'hidden', backgroundColor: isDark ? palette.paper : palette.ink }}>
         <Animated.View style={[StyleSheet.absoluteFill, introImage]} importantForAccessibility="no-hide-descendants">
           <Image source={entranceStill} accessible={false} resizeMode="cover" fadeDuration={0}
-            onLoad={() => setImageReady(true)} onError={() => setFinished(true)} style={{ width: '100%', height: '100%' }} />
+            onLoad={() => setImageReady(true)} onError={() => { setImageFailed(true); setFinished(true); }} style={{ width: '100%', height: '100%' }} />
         </Animated.View>
       </Animated.View>}
       {showIntro ? <View style={[styles.panel, { borderColor: palette.rule }]}>

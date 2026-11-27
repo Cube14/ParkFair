@@ -47,6 +47,8 @@ vehicle.addEventListener('environment-change', () => {
 }, {once:true});
 vehicle.addEventListener('error', () => window.ReactNativeWebView?.postMessage('garage-failed'));
 vehicle.setAttribute('environment-image', colors.get('light') === '08' ? 'studio-08-1k.hdr' : 'studio-04-1k.hdr');
+const exposure = colors.get('exposure');
+if (exposure === 'evening' || exposure === 'daylight') vehicle.setAttribute('exposure', exposure === 'evening' ? '0.83' : '1.06');
 vehicle.setAttribute('src', colors.get('arch') === 'showroom' ? 'garage-showroom.glb' : 'garage-brutalist.glb');
 window.parkfairResetCamera = () => resetCamera();
 window.addEventListener('pagehide', () => vehicle.remove(), {once:true});

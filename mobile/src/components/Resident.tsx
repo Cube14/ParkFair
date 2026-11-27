@@ -6,7 +6,7 @@ import { ApiError, type ResidentAllocation } from '../api';
 import { parkingKeys, type Allocation } from '../parkingClient';
 import { useSession } from '../session';
 import { useTheme } from '../theme';
-import { Control, Display, EditorialFrame, Label, LedgerLink, Note, TimelineEntry, useDesignPreview } from './Editorial';
+import { Control, Display, EditorialFrame, Label, LedgerLink, Note, TimelineEntry, useDesignPreview, useEditorial } from './Editorial';
 import { SceneStatus, SignatureHome } from './Signature';
 import { ArchitecturalPlan } from './ArchitecturalPlan';
 import { SignatureGarage } from './SignatureGarage';
@@ -34,10 +34,11 @@ function useResidentQuery<T>(path: string, enabled = true) {
   });
 }
 
-function QueryStatus({ query }: { query: { isPending: boolean; isError: boolean; refetch: () => unknown } }) {
-  if (query.isPending) return <Loading label="Loading parking" />;
+function QueryStatus({ query, label = 'parking' }: { query: { isPending: boolean; isError: boolean; error?: unknown; refetch: () => unknown }; label?: string }) {
+  if (query.isPending) return <Loading label={'Loading ' + label} />;
   if (!query.isError) return null;
-  return <><Copy error>Could not load this information.</Copy><Action label="Retry" onPress={() => { void query.refetch(); }} /></>;
+  return <><Copy error>{query.error instanceof ApiError ? 'Could not load ' + label + '.' : 'Connection unavailable. Reconnect to load ' + label + '.'}</Copy>
+    <Action label="Retry" onPress={() => { void query.refetch(); }} /></>;
 }
 
 function IllustrativePlan({ enlarged }: { enlarged: boolean }) {
@@ -152,17 +153,20 @@ export function ResidentSchedule() {
   const items = selected.isSuccess ? (history ? past.data?.history ?? [] :
     [future.data?.current, ...(future.data?.upcoming ?? [])].filter((x): x is Allocation => !!x)) : [];
   const { enabled } = useDesignPreview();
+  const c = useEditorial();
   if (enabled) return <EditorialFrame title={history ? 'History' : 'Schedule'} eyebrow="PARKING LEDGER" tabbed>
-    <View style={{flexDirection:'row',gap:20}}>
+    <View style={{flexDirection:'row',flexWrap:'wrap',gap:20,borderBottomWidth:1,borderColor:c.rule,paddingBottom:10}}>
       <Control title="Schedule" emphasis={!history} onPress={() => showHistory(false)} />
       <Control title="History" emphasis={history} onPress={() => showHistory(true)} />
     </View>
-    <QueryStatus query={selected} />
+    <QueryStatus query={selected} label={history ? 'parking history' : 'the schedule'} />
+    {selected.isSuccess && !history && !future.data?.current && <Note>No current allocation.</Note>}
     {selected.isSuccess && (items.length ? items.map(item =>
       <TimelineEntry key={item.publication?.id ?? item.cycle.id}
         label={history ? 'PAST ALLOCATION' : item.cycle.id === future.data?.current?.cycle.id ? 'CURRENT' : 'UPCOMING'}
-        bay={bay(item.parking.slot, item.parking.type)} detail={item.cycle.name} dates={dates(item.cycle.startDate, item.cycle.endDate)} />
-    ) : <Note>No allocations to show.</Note>)}
+        bay={bay(item.parking.slot, item.parking.type)} detail={[item.cycle.name, item.parking.type === 'OUTSIDE' ? 'Outdoor' : 'Covered', item.vehicle.number].filter(Boolean).join(' · ')}
+        dates={dates(item.cycle.startDate, item.cycle.endDate)} />
+    ) : <Note>{history ? 'Your completed allocations will appear here.' : 'No upcoming published allocation.'}</Note>)}
   </EditorialFrame>;
   return <Screen title={history ? 'Parking history' : 'Parking schedule'}>
     <Action label={history ? 'Show schedule' : 'Show history'} onPress={() => showHistory(!history)} />
@@ -181,24 +185,82 @@ export function ResidentAccount() {
   } catch { /* Only enable remote actions for identifiable sessions. */ }
   const { appearance, setAppearance } = useTheme();
   const { enabled } = useDesignPreview();
+  const c = useEditorial();
   const [mode, setMode] = useState<'Account' | 'Inbox' | 'Settings' | 'Security' | 'Signed-in devices'>('Account');
   const [message, setMessage] = useState('');
+  const [revoking, setRevoking] = useState(false);
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
+    void AccessibilityInfo.isReduceMotionEnabled().then(setReduced).catch(() => {});
     const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
     return () => subscription.remove();
   }, []);
   const inbox = useResidentQuery<{ events: { _id: string; createdAt: string }[] }>('/resident/inbox', mode === 'Inbox');
+  const profile = useResidentQuery<ResidentAllocation>('/resident/dashboard', enabled && mode === 'Account');
   const sessions = useResidentQuery<{ sessions: { _id: string; client: string; current?: boolean; lastUsedAt?: string; expiresAt: string }[] }>('/auth/sessions', mode === 'Signed-in devices');
+  function open(next: typeof mode) { setMessage(''); setMode(next); }
+  function revoke(id: string) {
+    Alert.alert('Sign out this device?', 'This will end that session. The device will need to sign in again.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out device', style: 'destructive', onPress: () => {
+        setRevoking(true);
+        setMessage('');
+        void parking().revokeSession(id).then(async () => { await sessions.refetch(); setMessage('Device signed out.'); })
+          .catch(() => setMessage('Could not sign out that device. Retry when connected.')).finally(() => setRevoking(false));
+      } },
+    ]);
+  }
   if (enabled && mode === 'Account') return <EditorialFrame title="Profile" eyebrow="RESIDENT ACCOUNT" tabbed>
-    <Label>SIGNED IN AS</Label>
-    <Display size={30}>{session?.user.username}</Display>
-    <LedgerLink title="Registered vehicle" detail="Open the private garage" glyph="garage" onPress={() => router.push('/garage')} />
-    <LedgerLink title="Inbox" detail="Allocation updates" glyph="schedule" onPress={() => setMode('Inbox')} />
-    <LedgerLink title="Settings" detail="Appearance, accessibility and security" glyph="account" onPress={() => setMode('Settings')} />
+    <View style={{padding:16,gap:6,backgroundColor:c.stone,borderTopWidth:2,borderColor:c.gold}}>
+      <Label>{profile.data?.resident.flatNumber ? 'FLAT ' + profile.data.resident.flatNumber : 'SIGNED IN AS'}</Label>
+      <Display size={31}>{profile.data?.resident.name || session?.user.username}</Display>
+      {!!profile.data?.resident.name && <Note>{session?.user.username}</Note>}
+    </View>
+    <QueryStatus query={profile} label="profile details" />
+    <LedgerLink title="Registered vehicle" detail={profile.data?.vehicle?.number ?? (profile.isSuccess ? 'No vehicle on file' : undefined)} glyph="garage" onPress={() => router.push('/garage')} />
+    <LedgerLink title="Inbox" detail="Allocation updates" glyph="schedule" onPress={() => open('Inbox')} />
+    <LedgerLink title="Settings" detail="Appearance, accessibility and security" glyph="account" onPress={() => open('Settings')} />
     {message && <Copy error>{message}</Copy>}
     <Control title="Sign out" onPress={() => { void signOut().catch(() => setMessage('Could not clear the saved session.')); }} />
+  </EditorialFrame>;
+  if (enabled) return <EditorialFrame title={mode} eyebrow="RESIDENT ACCOUNT" tabbed>
+    <Control title={mode === 'Signed-in devices' ? '‹  Security' : mode === 'Security' ? '‹  Settings' : '‹  Profile'}
+      onPress={() => open(mode === 'Signed-in devices' ? 'Security' : mode === 'Security' ? 'Settings' : 'Account')} />
+    {mode === 'Inbox' && <>
+      <Label>ALLOCATION UPDATES</Label>
+      <QueryStatus query={inbox} label="inbox" />
+      {inbox.data?.events.map(entry => <TimelineEntry key={entry._id} label="SIMULATED INBOX" bay="Parking update"
+        dates={new Date(entry.createdAt).toLocaleDateString('en-IN', {dateStyle:'medium'})} />)}
+      {inbox.isSuccess && !inbox.data.events.length && <Note>Your allocation updates will appear here.</Note>}
+    </>}
+    {mode === 'Settings' && <>
+      <Label>APPEARANCE</Label>
+      <View style={{flexDirection:'row',flexWrap:'wrap',gap:19}}>
+        {(['System','Light','Dark'] as const).map(item => <Control key={item} title={item} emphasis={item === appearance}
+          onPress={() => setAppearance(item)} />)}
+      </View>
+      <Label>ACCESSIBILITY</Label>
+      <Note>System reduced motion · {reduced ? 'On' : 'Off'}. Controls remain available when cinematic motion is off.</Note>
+      <LedgerLink title="Security" detail="Review your signed-in devices" glyph="account" onPress={() => open('Security')} />
+    </>}
+    {mode === 'Security' && <>
+      <Note>Review devices signed in to your own ParkFair account.</Note>
+      <LedgerLink title="Signed-in devices" glyph="account" onPress={() => open('Signed-in devices')} />
+    </>}
+    {mode === 'Signed-in devices' && <>
+      <QueryStatus query={sessions} label="signed-in devices" />
+      {sessions.data?.sessions.map(entry => {
+        const here = entry.current === true || entry._id === currentId;
+        return <View key={entry._id} style={{gap:5,paddingVertical:13,borderBottomWidth:1,borderColor:c.rule}}>
+          <Label>{here ? 'CURRENT SESSION' : 'OTHER SESSION'}</Label>
+          <Display size={25}>{here ? 'This device' : entry.client === 'web' ? 'Web browser' : 'Mobile device'}</Display>
+          <Note>{entry.lastUsedAt ? 'Last active ' + new Date(entry.lastUsedAt).toLocaleString() : 'Session expiry ' + new Date(entry.expiresAt).toLocaleString()}</Note>
+          {!here && (entry.current === false || currentId) && <Control title="Sign out device" disabled={revoking} onPress={() => revoke(entry._id)} />}
+        </View>;
+      })}
+      {sessions.isSuccess && !sessions.data.sessions.length && <Note>No sessions returned. Refresh to check again.</Note>}
+      {message && <Copy error={message !== 'Device signed out.'}>{message}</Copy>}
+    </>}
   </EditorialFrame>;
   return <Screen previewTabbed title={mode}>
     {mode === 'Account' && (['Inbox', 'Settings'] as const).map(item =>

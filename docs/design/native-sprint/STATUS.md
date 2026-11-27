@@ -14,4 +14,11 @@ Baseline `67e8031043b6623590451bd6d5acf494d5a1b006`. All major visual changes us
 
 - A native top-down drawing shows covered and outdoor bays, columns, circulation and sample bay A-12. It uses synthetic geometry and keeps sample selection distinct from account allocations. Owner-supplied site geometry remains required. The top-down view keeps bay labels readable at fit scale.
 - API 36 verified zoom controls, drag at zoom, fit, map selection and the accessible list in both appearances. Mobile lint and typecheck passed.
-- [Plan light](plan-light.png) · [Plan dark](plan-dark.png)
+- Checkpoint `ca8b504`. [Plan light](plan-light.png) · [Plan dark](plan-dark.png)
+
+## 5D.9 — Resident library and garage controls
+
+- The ledger distinguishes current, upcoming and past allocations and shows actual cycle, parking and vehicle details. Profile reads the resident's registered vehicle. Inbox, appearance, accessibility and device management share the editorial system. Device sign-out is confirmed and scoped to another known session on the signed-in account.
+- Garage keeps the Phase 5D.5 lighting by default. The optional study uses brighter Studio Small 04 in light appearance and dimmer Studio Small 08 in dark. Reset and Eco stay prominent. Expandable credits remain accessible in Eco. Home uses the same baseline poster.
+- API 36 verified schedule and history, profile, inbox, appearance, the current session, live lighting and restored baseline. The entrance used a 3.1-second reveal and the form was visible within about 4.3 seconds of opening the preview. Skip brought up the form within the 350 ms settling interval plus capture time. Removing only the renderer's ADB route exercised the compact sign-in fallback. The route was restored. Mobile lint and typecheck passed.
+- [Schedule](schedule-light.png) · [Signed-in devices](devices-dark.png) · [Daylight study](garage-lighting-study-light.png) · [Evening study](garage-lighting-study-dark.png)

@@ -151,7 +151,7 @@ export function ArrivalComposition({ current, next, notice, allocationStatus, ne
   </EditorialFrame>;
 }
 
-export function TimelineEntry({ label, bay, detail, dates }: { label?: string; bay: string; detail: string; dates: string }) {
+export function TimelineEntry({ label, bay, detail, dates }: { label?: string; bay: string; detail?: string; dates: string }) {
   const c = useEditorial();
   return <View style={{ flexDirection: 'row', gap: 14 }}>
     <View style={{ alignItems: 'center', width: 13 }}>

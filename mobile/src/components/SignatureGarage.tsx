@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { Display, usePreviewMotion } from './Editorial';
 import { PorschePoster, SignatureShell, StudioButton, usePorscheViewport, useSignaturePalette } from './Signature';
+import { useTheme } from '../theme';
 
 const lab = 'http://127.0.0.1:8174/';
 
 export function SignatureGarage({ registration, status }: {registration?:string;status?:string}) {
   const c = useSignaturePalette();
+  const { isDark } = useTheme();
   const motion = usePreviewMotion();
   const router = useRouter();
   const viewport = usePorscheViewport();
@@ -20,6 +22,8 @@ export function SignatureGarage({ registration, status }: {registration?:string;
   const [readyScene,setReadyScene] = useState('');
   const [failed,setFailed] = useState(false);
   const [touching,setTouching] = useState(false);
+  const [lightingStudy,setLightingStudy] = useState(false);
+  const [credits,setCredits] = useState(false);
   const close = useCallback(() => {
     if (returnTimer.current) { clearTimeout(returnTimer.current); returnTimer.current = null; }
     posterOpacity.setValue(1);
@@ -28,7 +32,8 @@ export function SignatureGarage({ registration, status }: {registration?:string;
     setReadyScene('');
   },[posterOpacity]);
   const fallback = useCallback(() => { setFailed(true); close(); },[close]);
-  const options = new URLSearchParams({surface:c.plate,ink:c.ink,paper:c.paper,rule:c.line,motion:motion?'1':'0',scene:'5d5'}).toString();
+  const options = new URLSearchParams({surface:c.plate, ink:c.ink, paper:c.paper, rule:c.line, motion:motion?'1':'0', scene:'5d9',
+    light: lightingStudy && isDark ? '08' : '04', exposure: lightingStudy ? (isDark ? 'evening' : 'daylight') : 'baseline'}).toString();
   const ready = readyScene === options;
 
   useFocusEffect(useCallback(() => {
@@ -83,14 +88,13 @@ export function SignatureGarage({ registration, status }: {registration?:string;
 
   return <SignatureShell title="Private garage" tabbed scrollEnabled={!touching}>
     <View style={{paddingHorizontal:20,paddingTop:12,paddingBottom:9,gap:3}}>
-      <Text style={{color:c.signal,fontSize:11,letterSpacing:2,fontWeight:'800'}}>MOTOR COURT</Text>
       <Display size={36}>Private garage</Display>
     </View>
     {interactive ? <View style={{height:viewport,backgroundColor:c.plate}}
       onTouchStart={() => setTouching(true)}
       onTouchEnd={event => { if (!event.nativeEvent.touches.length) setTouching(false); }}
       onTouchCancel={() => setTouching(false)}>
-      <WebView ref={view} source={{uri:lab+'garage.html?'+options}} originWhitelist={[lab]} scrollEnabled={false}
+      <WebView key={options} ref={view} source={{uri:lab+'garage.html?'+options}} originWhitelist={[lab]} scrollEnabled={false}
         webviewDebuggingEnabled={__DEV__}
         useExpoModulesBridge={false} style={{backgroundColor:c.plate}}
         containerStyle={{flex:1,backgroundColor:c.plate}} onRenderProcessGone={fallback}
@@ -107,27 +111,29 @@ export function SignatureGarage({ registration, status }: {registration?:string;
       </Animated.View>
     </View> : <PorschePoster />}
     <View style={{paddingHorizontal:20,paddingVertical:10,gap:4,backgroundColor:c.panel,borderBottomWidth:1,borderColor:c.line}}>
-      <Text style={{color:c.signal,fontSize:11,letterSpacing:2,fontWeight:'800'}}>ILLUSTRATIVE VEHICLE</Text>
       <Text style={{color:c.ink,fontFamily:'serif',fontSize:23}}>{interactive ? 'Porsche 911 Carrera 4S' : 'Garage still'}</Text>
+      <Text style={{color:c.muted,fontSize:13}}>Illustrative vehicle · {interactive ? 'Interactive' : 'Eco still'}</Text>
       {interactive && ready && <Text style={{color:touching?c.signal:c.muted,fontSize:13}}>Drag to orbit · Pinch to zoom</Text>}
       {failed && <Text accessibilityRole="alert" style={{color:c.ink}}>3D view unavailable. Showing the garage still.</Text>}
       {interactive && !ready && <Text accessibilityLiveRegion="polite" style={{color:c.muted}}>Loading vehicle…</Text>}
       <View style={{flexDirection:'row',flexWrap:'wrap'}}>
-        <StudioButton title="‹  Motor Court" onPress={returnHome}/>
-        {available && <StudioButton title={interactive ? 'Still' : 'Open 3D view'} bright={!interactive} onPress={()=>{
+        {ready && <StudioButton title="Reset view" onPress={resetCamera}/>}
+        {available && <StudioButton title={interactive ? 'Use Eco still' : 'Open 3D view'} bright={!interactive} onPress={()=>{
           if (interactive) close();
           else {setFailed(false);setInteractive(true);}
         }}/>}
-        {ready && <StudioButton title="Reset view" onPress={resetCamera}/>}
+        <StudioButton title="‹  Motor Court" onPress={returnHome}/>
       </View>
-      {interactive && ready && <Text accessibilityRole="link" style={{color:c.signal,minHeight:44,paddingTop:6,fontSize:13}}
-        onPress={() => { void Linking.openURL('https://sketchfab.com/3d-models/free-porsche-911-carrera-4s-d01b254483794de3819786d93e0e1ebf').catch(() => {}); }}>
-        Porsche · Lionsharp Studios · CC BY-SA 4.0
-      </Text>}
-      {interactive && ready && <Text accessibilityRole="link" style={{color:c.signal,minHeight:32,fontSize:13}}
-        onPress={() => { void Linking.openURL('https://sketchfab.com/3d-models/brutalist-interior-0eb40f2cb2bf4dfdbaae36095825788a').catch(() => {}); }}>
-        Architecture · vslite · CC BY 4.0
-      </Text>}
+      {ready && <StudioButton title={lightingStudy ? 'Restore baseline lighting' : 'Try appearance lighting'} onPress={() => setLightingStudy(!lightingStudy)} />}
+      <StudioButton title={credits ? 'Hide scene credits' : 'Scene credits'} onPress={() => setCredits(!credits)} />
+      {credits && <View style={{ gap: 8 }}>
+        {[
+          ['Porsche · Lionsharp Studios / Karol Miklas · CC BY-SA 4.0', 'https://sketchfab.com/3d-models/free-porsche-911-carrera-4s-d01b254483794de3819786d93e0e1ebf'],
+          ['Architecture · vslite · CC BY 4.0', 'https://sketchfab.com/3d-models/brutalist-interior-0eb40f2cb2bf4dfdbaae36095825788a'],
+          ['Lighting · Greg Zaal / Sergej Majboroda · CC0', 'https://polyhaven.com/license'],
+        ].map(([label, url]) => <Text key={url} accessibilityRole="link" style={{color:c.signal,minHeight:44,fontSize:13}}
+          onPress={() => { void Linking.openURL(url).catch(() => {}); }}>{label}</Text>)}
+      </View>}
     </View>
     <View style={{paddingHorizontal:20,paddingVertical:12,gap:4}}>
       <Text style={{color:c.muted,fontSize:11,letterSpacing:2,fontWeight:'800'}}>REGISTERED VEHICLE</Text>
