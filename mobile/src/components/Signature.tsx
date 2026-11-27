@@ -137,41 +137,6 @@ export function SignatureHome({ current,next,notice,loading,upcomingStatus,onGar
   </SignatureShell>;
 }
 
-const demoBays = ['A-10','A-11','A-12','A-13','B-10','B-11','B-12','B-13'];
-export function SignaturePlan({ onReturn }: { onReturn:()=>void }) {
-  const c = useSignaturePalette();
-  const [large,setLarge] = useState(false);
-  const [list,setList] = useState(false);
-  return <SignatureShell title="Illustrative parking plan" tabbed>
-    <View style={{padding:20,gap:8}}>
-      <StudioButton title="‹  Motor Court" onPress={onReturn}/>
-      <Text accessibilityRole="header" style={{color:c.ink,fontSize:34,fontWeight:'600'}}>Parking plan</Text>
-      <Text style={{color:c.muted}}>Synthetic geometry · A-12 is the highlighted sample bay.</Text>
-      <View style={styles.actions}>
-        <StudioButton title={large ? 'Fit plan' : 'Zoom in'} onPress={()=>setLarge(!large)}/>
-        <StudioButton title={list ? 'Show drawing' : 'Accessible bay list'} onPress={()=>setList(!list)}/>
-      </View>
-      {list ? demoBays.map(bay=><Text key={bay} style={{color:c.ink,paddingVertical:5}}>{bay}{bay==='A-12' ? ' · Sample assignment' : ''}</Text>) :
-        <ScrollView horizontal>
-          <View style={{width:large ? 630 : 352,padding:14,backgroundColor:c.panel,borderColor:c.line,borderWidth:3,gap:8}}>
-            {[0,4].map(start=><View key={start}>
-              {start===4 && <View style={{borderColor:c.line,borderTopWidth:1,borderBottomWidth:1,paddingVertical:22,marginBottom:8}}>
-                <Text style={{color:c.muted,textAlign:'center',letterSpacing:2}}>ENTRY →     DRIVE AISLE     → EXIT</Text>
-              </View>}
-              <View style={{flexDirection:'row'}}>
-                {demoBays.slice(start,start+4).map(bay=><View key={bay} style={{flex:1,height:large?140:95,
-                  backgroundColor:bay==='A-12' ? c.signal : c.paper,borderWidth:1,borderColor:c.line,justifyContent:'center',alignItems:'center'}}>
-                  <Text style={{color:bay==='A-12'?c.paper:c.ink,fontWeight:'700'}}>{bay}</Text>
-                </View>)}
-              </View>
-            </View>)}
-          </View>
-        </ScrollView>}
-      <Text style={{color:c.muted}}>Use on-site signs for real navigation.</Text>
-    </View>
-  </SignatureShell>;
-}
-
 export function VehiclePortrait() {
   const c = useSignaturePalette();
   return <View style={{width:'100%',aspectRatio:1080 / 608,backgroundColor:c.plate}}>

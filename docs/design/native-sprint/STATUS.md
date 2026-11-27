@@ -8,4 +8,10 @@ Baseline `67e8031043b6623590451bd6d5acf494d5a1b006`. All major visual changes us
 - The dossier uses workbook column selectors, grouped row errors, registered correction values, a searchable chart and compact coverage. Validation, approval, idempotent publication, activation controls and simulated outbox status still use the original endpoints.
 - Management supports flat creation and resident account creation, password reset and enable/disable. It also supports vehicle registration and activation, bay creation and cycle planning. Bay editing has no existing endpoint. Flat deletion, vehicle deletion and entitlement changes are outside this sprint.
 - API 36 opened the office in both appearances and imported a synthetic CSV. Explicit column selection and grouping showed both invalid references on the same row. Registered selectors corrected the row, and review confirmed coverage after an explicit synthetic exclusion. The workflow opened the previous-revision comparison, approved revision 4, published version 1 and read one pending simulated notification. The backend replica-set Phase 2 and 3 checks passed (17/17). Mobile lint and typecheck passed.
-- [Office light](office-light.png) · [Office dark](office-dark.png) · [Grouped review issues](review-issues-light.png)
+- Checkpoint `af4f9d2`. [Office light](office-light.png) · [Office dark](office-dark.png) · [Grouped review issues](review-issues-light.png) · [Administrator walkthrough](administrator-walkthrough.mp4)
+
+## 5D.8 — Synthetic architectural plan
+
+- A native top-down drawing shows covered and outdoor bays, columns, circulation and sample bay A-12. It uses synthetic geometry and keeps sample selection distinct from account allocations. Owner-supplied site geometry remains required. The top-down view keeps bay labels readable at fit scale.
+- API 36 verified zoom controls, drag at zoom, fit, map selection and the accessible list in both appearances. Mobile lint and typecheck passed.
+- [Plan light](plan-light.png) · [Plan dark](plan-dark.png)

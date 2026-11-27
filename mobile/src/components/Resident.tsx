@@ -7,7 +7,8 @@ import { parkingKeys, type Allocation } from '../parkingClient';
 import { useSession } from '../session';
 import { useTheme } from '../theme';
 import { Control, Display, EditorialFrame, Label, LedgerLink, Note, TimelineEntry, useDesignPreview } from './Editorial';
-import { SceneStatus, SignatureHome, SignaturePlan } from './Signature';
+import { SceneStatus, SignatureHome } from './Signature';
+import { ArchitecturalPlan } from './ArchitecturalPlan';
 import { SignatureGarage } from './SignatureGarage';
 import { Action, Copy, Loading, Screen } from './Screen';
 
@@ -94,7 +95,7 @@ export function ResidentParking() {
       notice={offline && snapshot.data ? 'Offline snapshot · ' + new Date(snapshot.data.syncedAt).toLocaleString() + '. Confirm before parking.' : undefined}
       onPlan={() => setPlan(true)} onRefresh={refresh} onGarage={() => router.push('/garage')} />;
   }
-  if (enabled) return <SignaturePlan onReturn={() => setPlan(false)} />;
+  if (enabled) return <ArchitecturalPlan onReturn={() => setPlan(false)} />;
   return <Screen previewTabbed title={plan ? 'Parking plan' : 'Motor Court'}>
     {offline && snapshot.data ? <><Copy>Offline snapshot · synced {new Date(snapshot.data.syncedAt).toLocaleString()}. Confirm before parking.</Copy>
       <Action label="Reconnect" onPress={() => { void result.refetch(); void schedule.refetch(); }} /></> : <QueryStatus query={result} />}
@@ -110,7 +111,7 @@ export function ResidentParking() {
       <Copy>Illustrative plan · synthetic geometry</Copy>
       <IllustrativePlan enlarged={zoom} />
       <Action label={zoom ? 'Reset plan zoom' : 'Enlarge plan'} onPress={() => setZoom(!zoom)} />
-      <Copy>Illustrative bay list · North A1, A2, A3. South B1, B2, B3. Entry west, exit east.</Copy>
+      <Copy>Sample bays · A1, A2, A3, B1, B2 and B3.</Copy>
       <Copy>Refer to on-site signage for your verified bay location.</Copy>
     </> : <>
       <Image source={require('../../assets/garage-preview.jpg')} accessibilityLabel="Illustrative concept car in a concrete garage"
