@@ -5,8 +5,8 @@ import { useTheme } from '../theme';
 import { Control, Note, useEditorial, usePreviewMotion } from './Editorial';
 import { garageLab } from './Signature';
 
-export function ParkingStudyViewport({ selected, onSelection, onClose, onError, onDragging }: {
-  selected: string; onSelection: (name: string) => void; onClose: () => void; onError: () => void; onDragging: (active: boolean) => void;
+export function ParkingStudyViewport({ selected, assigned, onSelection, onClose, onError, onDragging }: {
+  selected?: string; assigned?: string; onSelection: (name: string) => void; onClose: () => void; onError: () => void; onDragging: (active: boolean) => void;
 }) {
   const c = useEditorial();
   const { isDark } = useTheme();
@@ -18,6 +18,9 @@ export function ParkingStudyViewport({ selected, onSelection, onClose, onError, 
   const [preset, setPreset] = useState<'axonometric' | 'overhead'>('axonometric');
   const uri = garageLab + 'parking-study.html?' + new URLSearchParams({ ...c, dark: isDark ? '1' : '0', motion: motion ? '1' : '0' }).toString();
   const ready = readyUri === uri;
+  useEffect(() => {
+    if (ready) ref.current?.injectJavaScript(`window.parkingStudyCommand?.('assignment',${JSON.stringify(assigned ?? null)});true;`);
+  }, [assigned, ready]);
 
   useEffect(() => {
     const handler = AppState.addEventListener('change', state => { if (state !== 'active') onClose(); });
@@ -55,6 +58,7 @@ export function ParkingStudyViewport({ selected, onSelection, onClose, onError, 
           let message: { type?: string; value?: unknown };
           try { message = JSON.parse(nativeEvent.data); } catch { return; }
           if (message.type === 'ready') {
+            command('assignment', assigned);
             command('select', selected);
             command('camera', preset);
             command('pan', pan);

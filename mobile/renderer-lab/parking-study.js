@@ -1,16 +1,17 @@
-import { createStudyModel, studyCoordinates } from './parking-study-model.js?v=6a3';
+import { createStudyModel, studyCoordinates } from './parking-study-model.js?v=6b1';
 
 const viewer = document.querySelector('#study');
 const params = new URLSearchParams(location.search);
 const palette = {};
 const motion = params.get('motion') === '1';
 const notify = (type, value) => window.ReactNativeWebView?.postMessage(JSON.stringify({ type, value }));
-const presets = { axonometric: '24deg 43deg 64m', overhead: '0deg 0.1deg 64m' };
+const presets = { axonometric: '24deg 43deg 70m', overhead: '0deg 0.1deg 64m' };
 let preset = 'axonometric';
 let mode = 'orbit';
 let objectUrl;
 let closed = false;
 let chooseBay;
+let updateAssignment;
 let drag;
 let pressed;
 
@@ -43,6 +44,7 @@ window.parkingStudyCommand = (action, value) => {
   if (action === 'camera' && Object.hasOwn(presets, value)) reset(value);
   if (action === 'reset') reset();
   if (action === 'select') chooseBay?.(value, false);
+  if (action === 'assignment') updateAssignment?.(value);
   if (action === 'pan') {
     mode = value ? 'pan' : 'orbit';
     viewer.toggleAttribute('camera-controls', !value);
@@ -82,7 +84,7 @@ async function setup() {
   }
   viewer.setAttribute('exposure', params.get('dark') === '1' ? '1.32' : '.83');
   viewer.setAttribute('interpolation-decay', motion ? '125' : '0');
-  const response = await fetch('parkingStudy.json?v=6a3');
+  const response = await fetch('parkingStudy.json?v=6b1');
   if (!response.ok) throw new Error('Study layout unavailable');
   const layout = await response.json();
   if (closed) return;
@@ -90,24 +92,40 @@ async function setup() {
   const markers = new Map();
   const result = createStudyModel(layout, palette);
   let selected;
-
-  chooseBay = (name, announce = true) => {
-    if (!markers.has(name) || !viewer.loaded) return;
-    for (const [id, color] of [[selected, result.bayColor], [name, result.accentColor]]) {
-      if (!id) continue;
+  let assigned;
+  const known = new Map(bays.map(bay => [bay.name, bay]));
+  const isPartOf = (bay, name) => bay.name === name || (known.get(name)?.position === 'FULL' && bay.physical === name);
+  function repaint() {
+    for (const [id, marker] of markers) {
+      const bay = known.get(id);
+      const allocated = isPartOf(bay, assigned), chosen = isPartOf(bay, selected);
+      const color = allocated ? result.accentColor : chosen ? result.selectionColor : result.bayColor;
       viewer.model.getMaterialByName('select:' + id)?.pbrMetallicRoughness.setBaseColorFactor(color);
-      markers.get(id).setAttribute('aria-pressed', String(id === name));
+      marker.setAttribute('aria-pressed', String(id === selected));
+      marker.dataset.assigned = String(allocated);
     }
+  }
+  chooseBay = (name, announce = true) => {
+    if (!viewer.loaded || (name && !known.has(name))) return;
     selected = name;
-    if (announce) notify('bay', name);
+    repaint();
+    if (announce && name) notify('bay', name);
+  };
+  updateAssignment = name => {
+    const follows = !selected || selected === assigned;
+    assigned = known.has(name) ? name : undefined;
+    if (follows) selected = assigned;
+    repaint();
   };
 
   for (const bay of bays) {
     const marker = document.createElement('button');
-    marker.className = 'bay';
-    marker.textContent = bay.name;
-    marker.slot = 'hotspot-' + bay.name;
-    marker.dataset.position = `${x(bay.x + bay.width / 2)}m 0.09m ${z(bay.y + bay.depth / 2)}m`;
+    const child = bay.position === 'A' || bay.position === 'B';
+    marker.className = child ? 'bay tandem' : bay.area === 'Outdoor' ? 'bay outdoor' : 'bay';
+    marker.textContent = child ? bay.position : bay.name;
+    marker.slot = 'hotspot-' + bay.name.replace(' ', '-');
+    const fraction = child ? .70 : bay.position === 'FULL' ? .26 : bay.area === 'Outdoor' ? (Number(bay.name.slice(-1)) % 2 ? .32 : .67) : .50;
+    marker.dataset.position = `${x(bay.x + bay.width / 2)}m 0.1m ${z(bay.y + bay.depth * fraction)}m`;
     marker.dataset.normal = '0m 1m 0m';
     marker.setAttribute('aria-label', bay.name + ', ' + bay.area);
     marker.setAttribute('aria-pressed', 'false');
@@ -118,13 +136,12 @@ async function setup() {
     markers.set(bay.name, marker);
     viewer.append(marker);
   }
-  const { aisle } = layout;
-  for (const [name, nx] of [['Entry', aisle.x + 15], ['Exit', aisle.x + aisle.width - 15]]) {
+  for (const { name, x: nx, y: nz, height = .1 } of layout.markings) {
     const marker = document.createElement('span');
     marker.className = 'aisle';
     marker.textContent = name;
     marker.slot = 'hotspot-' + name;
-    marker.dataset.position = `${x(nx)}m 0.09m ${z(aisle.y + 10)}m`;
+    marker.dataset.position = `${x(nx)}m ${height}m ${z(nz)}m`;
     marker.dataset.normal = '0m 1m 0m';
     viewer.append(marker);
   }
@@ -132,12 +149,12 @@ async function setup() {
     if (pressed?.moved || mode === 'pan' || !viewer.loaded) return;
     const hit = viewer.positionAndNormalFromPoint(event.clientX, event.clientY)?.position;
     if (!hit || hit.y > .4) return;
-    const bay = bays.find(item => hit.x >= x(item.x) && hit.x <= x(item.x + item.width) &&
+    const hits = bays.filter(item => hit.x >= x(item.x) && hit.x <= x(item.x + item.width) &&
       hit.z >= z(item.y) && hit.z <= z(item.y + item.depth));
+    const bay = hits.length > 1 && hit.z >= z(hits[0].y + hits[0].depth * .43) ? hits[1] : hits[0];
     if (bay) chooseBay(bay.name);
   });
   viewer.addEventListener('load', () => {
-    chooseBay(layout.sample, false);
     reset();
     reportReady({ triangles: result.triangles, bytes: result.model.size });
   }, { once: true });

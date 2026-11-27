@@ -96,7 +96,7 @@ export function ResidentParking() {
       notice={offline && snapshot.data ? 'Offline snapshot · ' + new Date(snapshot.data.syncedAt).toLocaleString() + '. Confirm before parking.' : undefined}
       onPlan={() => setPlan(true)} onRefresh={refresh} onGarage={() => router.push('/garage')} />;
   }
-  if (enabled) return <ArchitecturalPlan onReturn={() => setPlan(false)} />;
+  if (enabled) return <ArchitecturalPlan allocation={current?.parking?.slot} onReturn={() => setPlan(false)} />;
   return <Screen previewTabbed title={plan ? 'Parking plan' : 'Motor Court'}>
     {offline && snapshot.data ? <><Copy>Offline snapshot · synced {new Date(snapshot.data.syncedAt).toLocaleString()}. Confirm before parking.</Copy>
       <Action label="Reconnect" onPress={() => { void result.refetch(); void schedule.refetch(); }} /></> : <QueryStatus query={result} />}

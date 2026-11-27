@@ -8,6 +8,7 @@ import { ApiError } from '../api';
 import { applyDraftReview, type ColumnMapping, type DraftResponse, type InputFile, type Row } from '../parkingClient';
 import { useSession } from '../session';
 import { useTheme } from '../theme';
+import { positionConflict, positionDetail, type ParkingAddress, type VehicleSize } from '../parkingCompatibility';
 import { Control, Display, EditorialFrame, Label, Note, useDesignPreview, useEditorial, usePreviewMotion } from './Editorial';
 import { Action, Copy, Screen } from './Screen';
 
@@ -17,6 +18,7 @@ const steps = ['Prepare', 'Review', 'Confirm', 'Publish', 'Communicate'];
 const fields = { flatNumber: 'Flat', slotNumber: 'Bay', vehicleNumber: 'Vehicle', notes: 'Notes' };
 const xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const blank = { flatNumber: '', slotNumber: '', vehicleNumber: '', notes: '' };
+type InventoryEntry = Row & ParkingAddress & { isActive?: boolean; flatId?: {flatNumber:string}; size?: VehicleSize };
 function Field({ label, value, set }: { label: string; value: string; set: (value: string) => void }) {
   const { colors } = useTheme();
   const { enabled } = useDesignPreview();
@@ -58,8 +60,13 @@ export default function Dossier() {
   const inventory = useQuery({
     queryKey: ['allocation-admin', session?.user.id, 'registered-options', picker],
     enabled: !!picker && drawer,
-    queryFn: ({signal}) => read<{data: (Row & {isActive?: boolean; flatId?: {flatNumber:string}})[]}>(
+    queryFn: ({signal}) => read<{data: InventoryEntry[]}>(
       picker === 'flatNumber' ? '/flats' : picker === 'vehicleNumber' ? '/vehicles' : '/slots', signal),
+  });
+  const registeredCars = useQuery({
+    queryKey: ['allocation-admin', session?.user.id, 'registered-options', 'vehicleNumber'],
+    enabled: enabled && drawer && picker === 'slotNumber' && !!row.vehicleNumber,
+    queryFn: ({signal}) => read<{data: InventoryEntry[]}>('/vehicles', signal),
   });
   const [index, setIndex] = useState<number | null>(null);
   const [exclusion, setExclusion] = useState({ flatNumber: '', reason: '' });
@@ -83,11 +90,13 @@ export default function Dossier() {
   const rows = draft?.version?.rows ?? [];
   const exclusions = draft?.version?.exclusions ?? [];
   const rowData = ({ flatNumber, slotNumber, vehicleNumber, notes }: Row): Row => ({ flatNumber, slotNumber, vehicleNumber, notes });
-  const issues = draft?.issues ?? draft?.version?.importIssues ?? [];
+  const issues = draft?.issues ?? draft?.draft.issues ?? draft?.version?.importIssues ?? [];
   const groups = new Map<number | null, typeof issues>();
   for (const issue of issues) groups.set(issue.row, [...(groups.get(issue.row) ?? []), issue]);
   const choices = picker ? inventory.data?.data.filter(item => item.isActive !== false && item[picker]?.toLowerCase().includes(term.trim().toLowerCase())
     && (picker !== 'vehicleNumber' || !row.flatNumber || item.flatId?.flatNumber === row.flatNumber)) : undefined;
+  const registeredCar = registeredCars.data?.data.find(item => item.vehicleNumber === row.vehicleNumber);
+  const otherLabels = rows.filter((_, i) => i !== index).map(item => item.slotNumber);
   const matchingRows = rows.map((item, i) => ({ item, i })).filter(({ item }) =>
     [item.flatNumber, item.slotNumber, item.vehicleNumber].join(' ').toLowerCase().includes(filter.trim().toLowerCase()));
   const canConfirm = draft?.draft.status === 'VALIDATED' && !conflict;
@@ -227,6 +236,7 @@ export default function Dossier() {
         {preview.importIssues.map((issue, i) => <Copy error key={i}>{issue.message}</Copy>)}
         {enabled ? <View style={{ padding: 12, backgroundColor: ink.stone, gap: 3 }}>
           <Label>WORKBOOK MAPPING</Label>
+          <Note>Use the exact parking address shown in Inventory, including A or B for a tandem position.</Note>
           {(Object.keys(fields) as (keyof Row)[]).map(field => <View key={field}>
             <Control title={fields[field] + ' · ' + (preview.columns.find(column => column.column === mapping[field])?.label ?? 'Unmapped')}
               onPress={() => setMappingField(mappingField === field ? undefined : field)} disabled={busy} />
@@ -417,11 +427,19 @@ export default function Dossier() {
             {inventory.isPending && <Note>Loading registered {fields[picker].toLowerCase()} options…</Note>}
             {inventory.isError && act('Retry inventory', () => { void inventory.refetch(); })}
             {choices?.length === 0 && <Note>No matching registered values.</Note>}
-            {choices?.map(item =>
-              <Action key={item[picker]} label={item[picker]!} onPress={() => {
-                setRow({ ...row, [picker]: item[picker], ...(picker === 'flatNumber' && row.flatNumber !== item.flatNumber && {vehicleNumber: ''}) });
-                setPicker(undefined);
-              }} />)}
+            {enabled && picker === 'slotNumber' && <Note>{registeredCar?.size ? 'Compatible with ' + registeredCar.size.toLowerCase() + ' cars' : 'Select a classified vehicle to check size compatibility.'}</Note>}
+            {choices?.map(item => {
+              const reason = enabled && picker === 'slotNumber' ? positionConflict(item, registeredCar ? registeredCar.size ?? null : undefined, otherLabels) : undefined;
+              const label = item[picker]!;
+              return <View key={label}>
+                <Action label={label} disabled={!!reason} onPress={() => {
+                  setRow({ ...row, [picker]: item[picker], ...(picker === 'flatNumber' && row.flatNumber !== item.flatNumber && {vehicleNumber: ''}) });
+                  setPicker(undefined);
+                }} />
+                {enabled && picker === 'slotNumber' && item.position && <Note>{reason ?? positionDetail(item.position)}</Note>}
+                {enabled && picker === 'vehicleNumber' && <Note>{item.size ? item.size.toLowerCase() + ' car' : 'Size unclassified'}</Note>}
+              </View>;
+            })}
             {enabled && picker === 'vehicleNumber' && <Control title="Clear vehicle" onPress={() => {
               setRow({ ...row, vehicleNumber: '' }); setPicker(undefined);
             }} />}

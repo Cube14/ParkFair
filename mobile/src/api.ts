@@ -5,7 +5,7 @@ export type User = { id: string; username: string; role: Role };
 export type ResidentAllocation = {
   resident: { name: string; flatNumber: string };
   vehicle: { number: string } | null;
-  parking: { status: 'INSIDE' | 'OUTSIDE'; slot: string } | null;
+  parking: { status: 'INSIDE' | 'OUTSIDE'; slot: string; physicalSlot?: string; position?: 'FULL' | 'A' | 'B' | 'SINGLE' } | null;
   cycle: { name: string; startDate: string; endDate: string; remainingDays: number } | null;
 };
 export type AdminOccupancy = {
@@ -18,6 +18,8 @@ export type AdminOccupancy = {
     activeCycleEndDate?: string | null;
     insideAssignments?: number;
     outsideAssignments?: number;
+    capacityByArea?: Record<'INSIDE' | 'OUTSIDE', {total:number;occupied:number;available:number}>;
+    maximumCapacity?: number;
   };
 };
 

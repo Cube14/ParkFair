@@ -3,22 +3,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' blob:; worker-src 'self' blob:">
-<title>ParkFair architectural parking study</title>
+<title>ParkFair Siddha-A parking schematic</title>
 <style>
 html, body, model-viewer { margin:0; width:100%; height:100%; overflow:hidden; background:var(--paper); color:var(--ink); }
 model-viewer { display:block; touch-action:none; }
 .bay { appearance:none; border:0; border-radius:2px; padding:3px 1px; background:var(--paper); color:var(--ink); -webkit-tap-highlight-color:transparent;
   font:700 9px/1 system-ui,sans-serif; white-space:nowrap; cursor:pointer; }
-.bay[aria-pressed=true] { background:var(--gold); color:var(--paper); }
+.bay.tandem { padding-inline:4px; }
+.bay.outdoor { font-size:8px; }
+.bay[aria-pressed=true] { outline:1px solid var(--gold); }
+.bay[data-assigned=true] { background:var(--gold); color:var(--paper); }
 .bay:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
 .aisle { pointer-events:none; padding:4px 7px; background:var(--plate); color:var(--ink);
   font:650 9px/1 system-ui,sans-serif; letter-spacing:.08em; white-space:nowrap; }
 </style>
 <model-viewer id="study" camera-controls disable-pan disable-tap interaction-prompt="none" touch-action="none"
   environment-image="neutral" tone-mapping="commerce" shadow-intensity="0.77" shadow-softness="0.86"
-  camera-orbit="24deg 43deg 64m" camera-target="0m 0m 0m" field-of-view="32deg"
+  camera-orbit="24deg 43deg 70m" camera-target="0m 0m 0m" field-of-view="32deg"
   min-camera-orbit="auto 0deg 35m" max-camera-orbit="auto 73deg 106m" min-field-of-view="24deg" max-field-of-view="41deg"
-  alt="Synthetic architectural parking study with covered and outdoor courts"></model-viewer>
-<script type="module" src="parking-study.js?v=6a4"></script>
+  alt="Schematic of Siddha-A parking, not to scale"></model-viewer>
+<script type="module" src="parking-study.js?v=6b2"></script>
 <script type="module" src="viewer.js"></script>
 </html>

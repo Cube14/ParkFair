@@ -49,12 +49,18 @@ export function ParkingOffice({ data, pending, retry, cycles, bays, pendingRevie
         <View accessible accessibilityLabel={Math.round(ratio) + '% assigned'} style={{ height: 7, backgroundColor: c.rule }}>
           <View style={{ height: 7, width: ratio + '%', backgroundColor: c.gold }} />
         </View>
-        {byArea?.map(area => {
+        {data.capacityByArea ? ([['INSIDE','Covered'], ['OUTSIDE','Outdoor']] as const).map(([key,label]) => {
+          const area = data.capacityByArea![key];
+          return <View key={key} style={{flexDirection:'row',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+            <Note>{label}</Note><Note>{area.available} available · {area.total} effective</Note>
+          </View>;
+        }) : byArea?.map(area => {
           const total = area.bays.reduce((sum, bay) => sum + (bay.maxCapacity ?? 0), 0);
           return <View key={area.name} style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
             <Note>{area.name}</Note><Note>{total - area.occupied} available · {total} total</Note>
           </View>;
         })}
+        {data.maximumCapacity !== undefined && <Note>{data.maximumCapacity} maximum · flexibility depends on tandem occupancy</Note>}
       </>}
       {pending && <Note>Loading occupancy…</Note>}
       {retry && <Control title="Refresh office data" onPress={retry} />}

@@ -9,10 +9,12 @@ import { nextPlannedCycle, ParkingOffice, type OfficeBay, type OfficeCycle } fro
 import { Action, Copy, Screen } from '../../components/Screen';
 import type { AdminOccupancy } from '../../api';
 import type { DraftResponse } from '../../parkingClient';
+import { positionDetail, type ParkingAddress, type VehicleSize } from '../../parkingCompatibility';
 
 const sections = { Flats: '/flats', Vehicles: '/vehicles', Inventory: '/slots', Cycles: '/cycles' };
 type Section = keyof typeof sections;
-type Entry = OfficeBay & Partial<OfficeCycle> & { _id: string; flatNumber?: string; slotNumber?: string; vehicleNumber?: string; vehicleCount?: number; flatId?: {_id:string;flatNumber:string}; account?: {exists:boolean;isActive:boolean;userId?:string} };
+type Entry = OfficeBay & ParkingAddress & Partial<OfficeCycle> & { _id: string; flatNumber?: string; size?: VehicleSize; vehicleType?: string; vehicleNumber?: string; vehicleCount?: number; flatId?: {_id:string;flatNumber:string}; account?: {exists:boolean;isActive:boolean;userId?:string} };
+type Directory = { data: Entry[]; domain?: 'SIDDHA_A' | null };
 export default function Workspace() {
   const router = useRouter();
   const {enabled} = useDesignPreview();
@@ -25,6 +27,8 @@ export default function Workspace() {
   const [adding, setAdding] = useState(false);
   const [number, setNumber] = useState('');
   const [side, setSide] = useState('A');
+  const [size, setSize] = useState<VehicleSize>();
+  const [testing, setTesting] = useState(false);
   const [flat, setFlat] = useState('');
   const flats = useQuery({queryKey:['allocation-admin', session?.user.id,'flat-options'],enabled:section === 'Vehicles' && adding,
     queryFn:({signal})=>read<{data:Entry[]}>('/flats',signal)});
@@ -39,8 +43,11 @@ export default function Workspace() {
   const overview = useQuery({ queryKey: [...base,'dashboard'], queryFn: ({signal}) => read<AdminOccupancy>('/dashboard', signal) });
   const officeCycles = useQuery({queryKey: [...base, 'cycles'], enabled,
     queryFn: ({signal}) => read<{data:OfficeCycle[]}>('/cycles', signal)});
-  const officeBays = useQuery({queryKey: [...base, 'Inventory'], enabled,
-    queryFn: ({signal}) => read<{data:Entry[]}>('/slots', signal)});
+  const officeBays = useQuery({queryKey: [...base, 'Inventory'], enabled:enabled || section === 'Vehicles',
+    queryFn: ({signal}) => read<Directory>('/slots', signal)});
+  const siddha = officeBays.data?.domain === 'SIDDHA_A';
+  const testingBays = useQuery({queryKey:[...base,'inventory-testing'], enabled: enabled && section === 'Inventory' && testing,
+    queryFn: ({signal}) => read<Directory>('/slots?context=testing', signal)});
   const planned = nextPlannedCycle(officeCycles.data?.data);
   const plannedDrafts = useQuery({queryKey: [...base, planned?._id, 'drafts'], enabled: enabled && !!planned && !planned.latestPublicationId,
     queryFn: ({signal}) => read<{drafts: DraftResponse['draft'][]}>('/allocation-drafts?cycleId=' + encodeURIComponent(planned!._id), signal)});
@@ -48,8 +55,9 @@ export default function Workspace() {
   const review = useQuery({queryKey: [...base, 'parking-office-coverage', pendingDraft?._id, pendingDraft?.revision], enabled: enabled && !!pendingDraft,
     queryFn: ({signal}) => read<{revision: number; issues: NonNullable<DraftResponse['issues']>}>('/allocation-drafts/' + pendingDraft!._id + '/coverage', signal)});
   const directory = useQuery({ queryKey: [...base,section], enabled: !!section,
-    queryFn: ({signal}) => read<{data:Entry[]}>(sections[section!], signal) });
-  function open(value?:Section) { setSection(value); setSearch(''); setAdding(false); setMessage(''); setNumber(''); setFlat(''); setSide('A'); setResident(undefined); setPassword(''); setSettings(false); }
+    queryFn: ({signal}) => read<Directory>(sections[section!], signal) });
+  const listed = testing ? testingBays : directory;
+  function open(value?:Section) { setSection(value); setSearch(''); setAdding(false); setMessage(''); setNumber(''); setFlat(''); setSide('A'); setSize(undefined); setTesting(false); setResident(undefined); setPassword(''); setSettings(false); }
   useEffect(() => {
     const back = BackHandler.addEventListener('hardwareBackPress', () => {
       if (busy) return true;
@@ -66,7 +74,7 @@ export default function Workspace() {
     setFailed(false);
     if (!section) {setBusy(false);return;}
     const body = section === 'Flats' ? {flatNumber:number.trim()} : section === 'Vehicles' ?
-      {vehicleNumber:number.trim(),flatId:flat} : {slotNumber:number.trim(),side,maxCapacity:1,displayOrder:(directory.data?.data.length ?? 0)+1};
+      {vehicleNumber:number.trim(),flatId:flat,...(size && {size})} : {slotNumber:number.trim(),side,maxCapacity:1,displayOrder:(directory.data?.data.length ?? 0)+1};
     try { await request(sections[section],{method:'POST',body}); setAdding(false); setNumber(''); setMessage('Saved.'); await Promise.all([directory.refetch(),overview.refetch()]); }
     catch(e) {setFailed(true); setMessage(e instanceof Error ? e.message : 'Could not save record.');}
     finally {setBusy(false);}
@@ -107,13 +115,23 @@ export default function Workspace() {
       }},
     ]);
   }
+  function classify(entry: Entry, next: VehicleSize) {
+    Alert.alert('Set vehicle size?', `Record ${entry.vehicleNumber} as a ${next.toLowerCase()} car.`, [
+      {text:'Cancel',style:'cancel'}, {text:'Confirm',onPress:() => {
+        setBusy(true); setFailed(false);
+        void request('/vehicles/' + entry._id,{method:'PUT',body:{size:next}}).then(async () => {
+          setMessage('Vehicle classification saved.'); await directory.refetch();
+        }).catch(error => { setFailed(true); setMessage(error instanceof Error ? error.message : 'Could not save classification.'); }).finally(() => setBusy(false));
+      }},
+    ]);
+  }
   if (enabled && !section && !settings) return <ParkingOffice data={overview.data?.data} pending={overview.isPending}
     cycles={officeCycles.data?.data} bays={officeBays.data?.data}
     pendingReview={review.data && pendingDraft ? {revision: review.data.revision, status: pendingDraft.status, issueCount: review.data.issues.length} : undefined}
     retry={overview.isError || officeCycles.isError || officeBays.isError ? () => { void Promise.all([overview.refetch(), officeCycles.refetch(), officeBays.refetch()]); } : undefined} navigate={open}
     onDossier={() => router.push('/allocations')} onSettings={() => setSettings(true)} />;
   const Frame = enabled ? EditorialFrame : Screen;
-  const matching = directory.data?.data.filter(entry => [entry.flatNumber, entry.slotNumber, entry.vehicleNumber, entry.cycleName, entry.status, entry.flatId?.flatNumber]
+  const matching = listed.data?.data.filter(entry => [entry.flatNumber, entry.slotNumber, entry.vehicleNumber, entry.cycleName, entry.status, entry.flatId?.flatNumber]
     .some(value => value?.toLowerCase().includes(search.trim().toLowerCase())));
   return <Frame title={settings ? 'Office settings' : resident ? 'Resident account' : section ?? 'Parking office'} eyebrow="PARKING OFFICE">
     {settings ? <>
@@ -147,32 +165,44 @@ export default function Workspace() {
       <Action label="Sign out" tone="quiet" onPress={()=>void signOut().catch(()=>setMessage('Sign-out failed.'))}/>
     </> : <>
       <Action label="Back to overview" onPress={()=>open()} />
+      {enabled && siddha && section === 'Inventory' && <Action label={testing ? 'Return to real inventory' : 'Administrator test inventory'}
+        onPress={() => { setTesting(!testing); setSearch(''); }} />}
       <TextInput accessibilityLabel="Search directory" placeholder="Search directory" placeholderTextColor={enabled ? c.muted : colors.secondary} value={search} onChangeText={setSearch} style={fieldStyle}/>
       {section !== 'Cycles' && (adding ? <>
         <Copy>{section === 'Inventory' ? 'New bay · capacity one' : section === 'Flats' ? 'New flat number' : 'Vehicle registration'}</Copy>
         <TextInput accessibilityLabel="New identifier" value={number} onChangeText={setNumber} style={fieldStyle}/>
         {section === 'Inventory' && <View style={{flexDirection:'row', flexWrap:'wrap', gap:12}}>{['A','B','OUTSIDE'].map(value=><Action key={value} label={value === 'OUTSIDE' ? 'Outdoor' : 'Covered '+value} disabled={side===value} onPress={()=>setSide(value)}/>)}</View>}
         {section === 'Vehicles' && <>
+          {siddha && <>
+            <Label>VEHICLE SIZE</Label>
+            <View style={{flexDirection:'row',gap:12}}>{(['SMALL','BIG'] as const).map(choice => <Action key={choice}
+              label={choice === 'SMALL' ? 'Small car' : 'Big car'} tone={size === choice ? 'primary' : undefined} onPress={()=>setSize(choice)}/>)}</View>
+          </>}
           {flats.isPending && <Copy>Loading registered flats…</Copy>}
           {flats.isError && <Action label="Retry registered flats" onPress={()=>void flats.refetch()}/>}
           {flats.data?.data.length === 0 && <Copy>Create a flat before registering a vehicle.</Copy>}
           {flats.data?.data.map(entry=><Action key={entry._id} label={'Flat '+entry.flatNumber} disabled={flat===entry._id} onPress={()=>setFlat(entry._id)}/>)}
         </>}
-        <Action label="Save record" disabled={busy || !number.trim() || (section === 'Vehicles' && !flat)} onPress={()=>void saveRecord()}/><Action label="Cancel" onPress={()=>setAdding(false)}/>
-      </> : <Action label={section === 'Flats' ? 'Add flat' : section === 'Inventory' ? 'Add bay' : 'Register vehicle'} onPress={()=>setAdding(true)}/>)}
+        <Action label="Save record" disabled={busy || !number.trim() || (section === 'Vehicles' && (!flat || (siddha && !size)))} onPress={()=>void saveRecord()}/><Action label="Cancel" onPress={()=>setAdding(false)}/>
+      </> : !(section === 'Inventory' && (siddha || listed.data?.domain === 'SIDDHA_A')) && <Action label={section === 'Flats' ? 'Add flat' : section === 'Inventory' ? 'Add bay' : 'Register vehicle'} onPress={()=>{setSize(undefined);setAdding(true);}}/>)}
       {section === 'Cycles' && <Action label="Plan or review a cycle" onPress={()=>router.push('/allocations')}/>}
-      {directory.isPending && <Copy>Loading…</Copy>}
-      {directory.isError && <Action label="Retry directory" onPress={()=>void directory.refetch()}/>}
+      {listed.isPending && <Copy>Loading…</Copy>}
+      {listed.isError && <Action label="Retry directory" onPress={()=>void listed.refetch()}/>}
       {matching?.map(e=><View key={e._id} style={{paddingVertical:10,gap:4,borderBottomWidth:1,borderColor:enabled ? c.rule : colors.line}}>
         {enabled ? <Display size={25}>{e.flatNumber ?? e.vehicleNumber ?? e.slotNumber ?? e.cycleName}</Display> : <Text style={{fontSize:22,color:colors.text}}>{e.flatNumber ?? e.vehicleNumber ?? e.slotNumber ?? e.cycleName}</Text>}
         {enabled && section === 'Cycles' && <Label>{e.status}{e.latestPublicationId ? ' · PUBLISHED' : ''}</Label>}
-        <Copy>{e.account ? (e.account.exists ? (e.account.isActive?'Resident active':'Account disabled'):'No resident account')+' · '+e.vehicleCount+' vehicles' : e.flatId ? 'Flat '+e.flatId.flatNumber+' · '+(e.isActive === false ? 'Inactive' : 'Active') : e.maxCapacity ? (e.side === 'OUTSIDE' ? 'Outdoor' : 'Covered '+e.side) + ' · Capacity '+e.maxCapacity : e.startDate && e.endDate ? e.startDate.slice(0,10)+' – '+e.endDate.slice(0,10) : e.status}</Copy>
+        <Copy>{e.account ? (e.account.exists ? (e.account.isActive?'Resident active':'Account disabled'):'No resident account')+' · '+e.vehicleCount+' vehicles' : e.flatId ? 'Flat '+e.flatId.flatNumber+' · '+(e.isActive === false ? 'Inactive' : 'Active') : e.position ? positionDetail(e.position) : e.maxCapacity ? (e.side === 'OUTSIDE' ? 'Outdoor' : 'Covered '+e.side) + ' · Capacity '+e.maxCapacity : e.startDate && e.endDate ? e.startDate.slice(0,10)+' – '+e.endDate.slice(0,10) : e.status}</Copy>
         {section === 'Flats' && <Action label={'Manage resident · '+e.flatNumber} tone="quiet" onPress={()=>{setResident(e);setMessage('');}}/>}
         {section === 'Vehicles' && <Action label={(e.isActive === false ? 'Activate ' : 'Deactivate ') + e.vehicleNumber}
           tone="quiet" disabled={busy} onPress={()=>toggleVehicle(e)}/>}
+        {siddha && section === 'Vehicles' && e.vehicleType === 'CAR' && <>
+          <Label>{e.size ? e.size + ' CAR' : 'SIZE UNCLASSIFIED'}</Label>
+          <View style={{flexDirection:'row',gap:12}}>{(['SMALL','BIG'] as const).filter(choice => e.size !== choice).map(choice =>
+            <Action key={choice} label={'Set ' + (choice === 'SMALL' ? 'Small' : 'Big')} disabled={busy} onPress={()=>classify(e,choice)}/>)}</View>
+        </>}
       </View>)}
-      {directory.data?.data.length === 0 && <Copy>No records.</Copy>}
-      {!!directory.data?.data.length && !matching?.length && <Copy>No matching records.</Copy>}
+      {listed.data?.data.length === 0 && <Copy>No records.</Copy>}
+      {!!listed.data?.data.length && !matching?.length && <Copy>No matching records.</Copy>}
     </>}
     {!!message && <Copy error={failed}>{message}</Copy>}
   </Frame>;

@@ -1,13 +1,9 @@
 // Map the same drawing coordinates used by the native plan into the study's local world.
 export function studyCoordinates(layout) {
-  const { drawing, metresPerUnit, baySize } = layout;
-  const x = value => (value - drawing.width / 2) * metresPerUnit.x;
-  const z = value => (value - drawing.height / 2) * metresPerUnit.z;
-  const bays = layout.rows.flatMap(row => row.names.map((name, index) => ({
-    name, area: row.area, x: row.x + index * row.spacing, y: row.y,
-    ...baySize,
-  })));
-  return { x, z, bays };
+  const { drawing, worldScale, positions } = layout;
+  const x = value => (value - drawing.width / 2) * worldScale.x;
+  const z = value => (value - drawing.height / 2) * worldScale.z;
+  return { x, z, bays: positions };
 }
 
 const toLinear = hex => hex.match(/\w{2}/g).map(pair => {
@@ -70,62 +66,56 @@ export function createStudyModel(layout, palette) {
   rectangle('edge', layout.aisle, 0, .032);
   rectangle('edge', layout.connector, 0, .022);
 
-  // Long control joints and lifted edges describe the model as a cutaway building study.
-  for (const pos of layout.pavingJoints.x) {
-    for (const [start, stop] of layout.pavingJoints.runs) box('joint', pos, start, pos + .65, stop, .008, .012);
-  }
-  for (const curb of layout.curbs) rectangle('edge', curb, .035, .18);
-  for (const planter of layout.planters) {
-    rectangle('column', planter, .13, .44);
-    rectangle('bay', inset(planter, 3, 1), .44, .47);
+  rectangle('column', layout.building, 0, 4.4);
+  rectangle('canopy', inset(layout.building, 4, 4), 4.4, 4.7);
+  for (const line of [.26, .52, .78]) {
+    const zLine = layout.building.y + layout.building.depth * line;
+    box('joint', layout.building.x, zLine, layout.building.x + layout.building.width, zLine + 1, 4.7, 4.72);
   }
 
-  for (const bay of bays) {
-    const y = bay.area === 'Outdoor' ? .03 : .043;
-    rectangle('bay', bay, y, y + .013);
-    const end = bay.y + bay.depth;
-    for (const edge of [bay.x, bay.x + bay.width - 1.05]) box('stripe', edge, bay.y, edge + 1.05, end, y + .014, y + .02);
-    const stop = bay.y === layout.rows[0].y ? bay.y + 3 : end - 5;
-    box('column', bay.x + 9, stop, bay.x + bay.width - 9, stop + 2, y + .012, .15);
-  }
-
-  for (const column of layout.columnXs) {
-    for (const row of layout.columnYs) {
-      box('contact', column - 5, row - 3.4, column + 7.7, row + 5.2, .037, .039);
-      box('foundation', column - 5, row - 3.6, column + 5, row + 3.6, .038, .145);
-      box('column', column - 3.1, row - 2.15, column + 3.1, row + 2.15, .145, 2.69);
-      box('beam', column - 4.1, row - 2.9, column + 4.1, row + 2.9, 2.57, 2.8);
+  for (const bay of layout.bays) {
+    const y = .046;
+    rectangle('bay', bay, y, y + .011);
+    const right = bay.x + bay.width, end = bay.y + bay.depth;
+    for (const edge of [bay.y, end - 1.1]) box('stripe', bay.x, edge, right, edge + 1.1, y + .012, y + .023);
+    for (const edge of [bay.x, right - 1.1]) box('stripe', edge, bay.y, edge + 1.1, end, y + .012, y + .023);
+    if (bay.flex) {
+      const mid = bay.x + bay.width / 2;
+      for (const part of [.16, .40, .64]) box('stripe', mid, bay.y + bay.depth * part, mid + .8,
+        bay.y + bay.depth * (part + .12), y + .012, y + .023);
     }
   }
-  const leftColumn = Math.min(...layout.columnXs), rightColumn = Math.max(...layout.columnXs);
-  for (const row of layout.columnYs) box('beam', leftColumn - 7, row - 2.4, rightColumn + 7, row + 2.4, 2.68, 2.93);
-  for (const column of layout.columnXs) {
-    for (const [i, row] of layout.columnYs.entries()) {
-      const next = layout.columnYs[i + 1];
-      if (next && (next < layout.aisle.y || row > layout.aisle.y + layout.aisle.depth)) {
-        box('beam', column - 2.5, row - 6, column + 2.5, next + 6, 2.78, 3.03);
-      }
+
+  for (const column of layout.columns) {
+    box('contact', column.x - 5, column.y - 4, column.x + 8, column.y + 5, .038, .041);
+    box('foundation', column.x - 4, column.y - 3, column.x + 4, column.y + 3, .041, .16);
+    box('column', column.x - 2.5, column.y - 2.1, column.x + 2.5, column.y + 2.1, .16, 2.69);
+  }
+  for (const beam of layout.beams) rectangle('beam', beam, 2.62, 2.92);
+  for (const strip of layout.roofStrips) rectangle('canopy', strip, 2.89, 3.08);
+
+  // The divided aisle has opposing arrow markings; it conveys no driving directions for the real site.
+  const { aisle } = layout;
+  for (const fraction of [.16, .32, .49, .66, .84]) {
+    const zLine = aisle.y + aisle.depth * fraction;
+    const centre = aisle.x + aisle.width / 2;
+    box('joint', centre, zLine - 10, centre + 1, zLine + 10, .035, .042);
+    for (const direction of [-1, 1]) {
+      const lane = centre + direction * aisle.width / 4;
+      box('stripe', lane - .7, zLine - 7, lane + .7, zLine + 7, .035, .042);
+      const leads = direction === 1 ? [[lane - 3, zLine + 5], [lane, zLine + 13], [lane + 3, zLine + 5]]
+        : [[lane + 3, zLine - 5], [lane, zLine - 13], [lane - 3, zLine - 5]];
+      const mesh = groups.get('stripe');
+      for (const [px, pz] of leads) { mesh.positions.push(x(px), .045, z(pz)); mesh.normals.push(0, 1, 0); }
     }
   }
-  // A partial roof and perimeter fascia leave the bays visible under both cameras.
-  for (const strip of layout.roofStrips) {
-    rectangle('canopy', strip, 2.91, 3.10);
-    box('beam', strip.x - 2, strip.y - 2, strip.x + strip.width + 2, strip.y + 1, 2.82, 3.19);
-  }
-  const centre = layout.aisle.y + layout.aisle.depth / 2;
-  for (const fraction of [.045, .24, .43, .625, .82]) {
-    const pos = layout.aisle.x + layout.aisle.width * fraction;
-    box('stripe', pos, centre - .6, pos + 21, centre + .6, .034, .043);
-    const points = [[pos + 19, centre - 3.3], [pos + 19, centre + 3.3], [pos + 25, centre]];
-    const mesh = groups.get('stripe');
-    for (const [px, pz] of points) { mesh.positions.push(x(px), .044, z(pz)); mesh.normals.push(0, 1, 0); }
-  }
 
-  // A separate mesh for each bay lets selection change material without reloading the scene.
   for (const bay of bays) {
     const background = groups.get('bay').pbrMetallicRoughness;
     groups.set('select:' + bay.name, { positions: [], normals: [], pbrMetallicRoughness: background });
-    box('select:' + bay.name, bay.x + 1.4, bay.y + 9, bay.x + bay.width - 1.4, bay.y + bay.depth - 8, .061, .064);
+    const insetBay = inset(bay, 2.5, 3);
+    const level = ["A", "B"].includes(bay.position) ? .073 : .065;
+    rectangle('select:' + bay.name, insetBay, level, level + .003);
   }
 
   const document = { asset: { version: '2.0', generator: 'ParkFair architectural study' }, scene: 0,
@@ -164,5 +154,5 @@ export function createStudyModel(layout, palette) {
   const bin = new Uint32Array([offset, 0x004e4942]);
   const model = new Blob([header, manifest, padding, bin, ...chunks], { type: 'model/gltf-binary' });
   return { model, triangles, bayColor: groups.get('bay').pbrMetallicRoughness.baseColorFactor,
-    accentColor: groups.get('accent').pbrMetallicRoughness.baseColorFactor };
+    accentColor: groups.get('accent').pbrMetallicRoughness.baseColorFactor, selectionColor: [...blend(palette.paper, palette.gold, .28), 1] };
 }

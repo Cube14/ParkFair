@@ -10,7 +10,7 @@ export type Coverage = {
   unresolvedReferences: Issue[]; capacity: { INSIDE: Capacity; OUTSIDE: Capacity };
 };
 export type DraftResponse = {
-  draft: { _id: string; cycleId: string; revision: number; status: 'DRAFT' | 'VALIDATED' | 'APPROVED' | 'PUBLISHED' | 'CANCELLED' };
+  draft: { _id: string; cycleId: string; revision: number; status: 'DRAFT' | 'VALIDATED' | 'APPROVED' | 'PUBLISHED' | 'CANCELLED'; issues?: Issue[] };
   version?: { revision: number; rows: (Row & { row: number })[]; exclusions: Exclusion[]; importIssues: Issue[] };
   issues?: Issue[];
   coverage?: Coverage;
@@ -22,7 +22,7 @@ export function applyDraftReview(current: DraftResponse, review: DraftResponse):
 export type Allocation = {
   cycle: { id: string; name: string; startDate: string; endDate: string };
   publication?: { id: string } | null;
-  parking: { type: 'INSIDE' | 'OUTSIDE'; slot: string | null };
+  parking: { type: 'INSIDE' | 'OUTSIDE'; slot: string | null; physicalSlot?: string; position?: 'FULL' | 'A' | 'B' | 'SINGLE' };
   vehicle: { id: string | null; number: string | null };
 };
 export type ColumnMapping = Partial<Record<keyof Row, number>>;

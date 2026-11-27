@@ -7,8 +7,7 @@ import { ParkingStudyViewport } from './ParkingStudyViewport';
 import { SignatureShell, StudioButton } from './Signature';
 import { useTheme } from '../theme';
 
-const { drawing, sample, baySize } = layout;
-const drawingBays = layout.rows.flatMap(row => row.names.map((name, index) => ({ name, x: row.x + index * row.spacing, y: row.y, area: row.area })));
+const { drawing, positions } = layout;
 const areaStyle = ({ x, y, width, depth }: typeof layout.covered) => ({ left: x, top: y, width, height: depth });
 const clamp = (value: number, limit: number) => Math.max(-limit, Math.min(limit, value));
 type Camera = { zoom: number; x: number; y: number };
@@ -22,7 +21,7 @@ function touchCenter(event: GestureResponderEvent) {
     distance: Math.hypot(first.pageX - second.pageX, first.pageY - second.pageY) };
 }
 
-export function ArchitecturalPlan({ onReturn }: { onReturn: () => void }) {
+export function ArchitecturalPlan({ onReturn, allocation }: { onReturn: () => void; allocation?: string | null }) {
   const c = useEditorial();
   const { isDark } = useTheme();
   const [size, setSize] = useState({ width: 0, height: 340 });
@@ -32,8 +31,12 @@ export function ArchitecturalPlan({ onReturn }: { onReturn: () => void }) {
   const [dragging, setDragging] = useState(false);
   const [mode, setMode] = useState<'drawing' | 'study' | 'list'>('drawing');
   const [studyError, setStudyError] = useState(false);
-  const [selected, setSelected] = useState(sample);
-  const selectedBay = drawingBays.find(bay => bay.name === selected)!;
+  const [manual, setSelected] = useState<string>();
+  const assigned = positions.find(bay => bay.name === allocation)?.name;
+  const selected = manual ?? assigned;
+  const selectedBay = positions.find(bay => bay.name === selected);
+  const info = selectedBay?.position === 'A' ? 'Inner tandem position' : selectedBay?.position === 'B' ? 'Outer tandem position' :
+    selectedBay?.position === 'FULL' ? 'Whole flex slot' : selectedBay?.area === 'Outdoor' ? 'Perpendicular outdoor bay' : 'Covered parking';
   const closeStudy = useCallback(() => { setMode('drawing'); setDragging(false); }, [setMode, setDragging]);
   const failStudy = useCallback(() => { closeStudy(); setStudyError(true); }, [closeStudy, setStudyError]);
   useFocusEffect(useCallback(() => closeStudy, [closeStudy]));
@@ -69,12 +72,12 @@ export function ArchitecturalPlan({ onReturn }: { onReturn: () => void }) {
     onPanResponderTerminate: () => { gesture.current = undefined; setDragging(false); },
   }), [setView]);
 
-  return <SignatureShell title="Illustrative parking plan" tabbed scrollEnabled={!dragging}>
+  return <SignatureShell title="Siddha-A parking plan" tabbed scrollEnabled={!dragging}>
     <View style={{ padding: 16, gap: 6 }}>
       <StudioButton title="‹  Motor Court" onPress={onReturn} />
-      <Label>ILLUSTRATIVE SITE STUDY</Label>
+      <Label>SIDDHA-A SCHEMATIC</Label>
       <Display size={37}>Parking plan</Display>
-      <Note>Synthetic layout. Use on-site signage for your actual bay.</Note>
+      <Note>Not to scale. Confirm your bay with on-site signage.</Note>
     </View>
     <View style={{ marginHorizontal: 12, borderWidth: 1, borderColor: c.rule, backgroundColor: c.stone }}>
       <View style={{ flexDirection: 'row', gap: 14, flexWrap: 'wrap', paddingHorizontal: 10 }}>
@@ -88,12 +91,12 @@ export function ArchitecturalPlan({ onReturn }: { onReturn: () => void }) {
           <Control title="Zoom in" disabled={camera.zoom >= 2.7} onPress={() => setView(camera.zoom * 1.35, camera.x, camera.y)} />
           <Control title="Fit plan" onPress={() => setView(1, 0, 0)} />
       </View>}
-      {mode === 'study' ? <ParkingStudyViewport key={isDark ? 'dark' : 'light'} selected={selected} onSelection={name => {
-        if (drawingBays.some(bay => bay.name === name)) setSelected(name);
+      {mode === 'study' ? <ParkingStudyViewport key={isDark ? 'dark' : 'light'} selected={selected} assigned={assigned} onSelection={name => {
+        if (positions.some(bay => bay.name === name)) setSelected(name);
       }} onDragging={setDragging} onClose={closeStudy} onError={failStudy} /> : mode === 'list' ? <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
-        {drawingBays.map(bay => <Pressable key={bay.name} accessibilityRole="button" accessibilityState={{ selected: bay.name === selected }}
+        {positions.map(bay => <Pressable key={bay.name} accessibilityRole="button" accessibilityState={{ selected: bay.name === selected }}
           onPress={() => setSelected(bay.name)} style={{ minHeight: 46, justifyContent: 'center', borderTopWidth: 1, borderColor: c.rule }}>
-          <Note>{bay.name} · {bay.area}{bay.name === sample ? ' · Sample bay' : ''}</Note>
+          <Note>{bay.name} · {bay.area}{bay.name === assigned ? ' · Your current allocation' : ''}</Note>
         </Pressable>)}
       </View> : <View onLayout={event => {
         const { width, height } = event.nativeEvent.layout;
@@ -101,35 +104,49 @@ export function ArchitecturalPlan({ onReturn }: { onReturn: () => void }) {
       }} {...pan.panHandlers} accessibilityLabel="Synthetic top-down plan" style={{ height: 340, overflow: 'hidden', backgroundColor: c.paper, borderTopWidth: 1, borderColor: c.rule }}>
         {!!fit && <View style={{ position: 'absolute', width: drawing.width, height: drawing.height,
           left: (size.width - drawing.width) / 2 + camera.x, top: (size.height - drawing.height) / 2 + camera.y, transform: [{ scale }] }}>
-          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.covered), { backgroundColor: c.stone, borderColor: c.rule, borderWidth: 2 }]} />
-          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.outdoor), { backgroundColor: c.plate, borderColor: c.rule, borderWidth: 1, borderStyle: 'dashed' }]} />
-          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.connector), { borderColor: c.rule, borderEndWidth: 1, borderStartWidth: 1, backgroundColor: c.plate }]} />
-          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.aisle), { backgroundColor: c.plate, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, borderBlockColor: c.rule, borderTopWidth: 1, borderBottomWidth: 1 }]}>
-            <Text style={[styles.label, { color: c.gold }]}>Entry →</Text>
-            <Text style={[styles.label, { color: c.muted }]}>Driving aisle  →</Text>
-            <Text style={[styles.label, { color: c.gold }]}>→ Exit</Text>
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.building), { backgroundColor: c.plate, borderWidth: 1, borderColor: c.rule, alignItems: 'center', justifyContent: 'center' }]}>
+            <Text style={[styles.label, { color: c.ink }]}>Siddha-A</Text>
           </View>
-          <Text style={[styles.absolute, styles.label, { left: 56, top: 25, color: c.muted }]}>COVERED COURT</Text>
-          <Text style={[styles.absolute, styles.label, { left: 100, top: 300, color: c.muted }]}>OUTDOOR COURT</Text>
-          {layout.columnXs.flatMap(x => layout.columnYs.map(y => <View key={x + '-' + y} pointerEvents="none"
-            style={[styles.absolute, { left: x, top: y, width: 8, height: 8, backgroundColor: c.muted }]} />))}
-          {drawingBays.map(bay => <Pressable key={bay.name} accessibilityRole="button" accessibilityLabel={bay.name + ', ' + bay.area}
-            accessibilityState={{ selected: bay.name === selected }} onPress={() => setSelected(bay.name)}
-            style={[styles.absolute, { left: bay.x, top: bay.y, width: baySize.width, height: baySize.depth, borderWidth: bay.name === selected ? 2 : 1,
-              borderColor: bay.name === selected ? c.gold : c.rule, backgroundColor: bay.name === sample ? c.gold : c.paper,
-              justifyContent: 'center', alignItems: 'center' }]}>
-            <Text maxFontSizeMultiplier={1.3} style={[styles.label, { color: bay.name === sample ? c.paper : c.ink }]}>{bay.name}</Text>
-          </Pressable>)}
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.outdoor), { backgroundColor: c.plate, borderWidth: 1, borderColor: c.rule }]} />
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.connector), { backgroundColor: c.plate }]} />
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.aisle), { backgroundColor: c.plate, alignItems: 'center', justifyContent: 'space-around' }]}>
+            <Text style={[styles.label, { color: c.gold }]}>Entrance</Text>
+            {[0, 1, 2, 3, 4].map(index => <Text key={index} style={{ color: c.muted, fontSize: 17 }}>↑ ↓</Text>)}
+          </View>
+          {layout.columns.map(column => <View key={column.x + ':' + column.y} pointerEvents="none"
+            style={[styles.absolute, { left: column.x - 3, top: column.y - 3, width: 6, height: 6, backgroundColor: c.muted }]} />)}
+          {layout.bays.map(bay => {
+            const flex = 'flex' in bay && bay.flex;
+            const choices = flex ? [bay.name + 'A', bay.name + 'B'] : [];
+            const highlight = assigned === bay.name;
+            return <View key={bay.name} style={[styles.absolute, areaStyle(bay), { backgroundColor: c.paper, borderWidth: 1,
+              borderColor: selected === bay.name || highlight ? c.gold : c.rule }]}>
+              <Pressable accessibilityRole="button" accessibilityLabel={bay.name + ', ' + bay.area}
+                accessibilityState={{selected: selected === bay.name}} onPress={() => setSelected(bay.name)}
+                style={{flex:1, alignItems:'center', justifyContent:'center', backgroundColor:highlight ? c.gold : c.paper}}>
+                <Text numberOfLines={1} maxFontSizeMultiplier={1.25} style={[styles.label,{color:highlight ? c.paper : c.ink},
+                  bay.area === 'Outdoor' && {width:58,textAlign:'center',transform:[{rotate:'-90deg'}]}]}>{bay.name}</Text>
+              </Pressable>
+              {flex && <View style={{flex:1,flexDirection:'row',borderTopWidth:1,borderColor:c.rule}}>
+                {choices.map(name => <Pressable key={name} accessibilityRole="button" accessibilityLabel={name}
+                  accessibilityState={{selected:selected === name}} onPress={() => setSelected(name)}
+                  style={{flex:1,alignItems:'center',justifyContent:'center',borderWidth:selected === name ? 1 : 0,borderColor:c.gold,
+                    backgroundColor:highlight || assigned === name ? c.gold : c.stone}}>
+                  <Text style={[styles.label,{color:highlight || assigned === name ? c.paper : c.ink}]}>{name.slice(-1)}</Text>
+                </Pressable>)}
+              </View>}
+            </View>;
+          })}
         </View>}
       </View>}
     </View>
     <View accessibilityLiveRegion="polite" style={{ margin: 12, padding: 12, gap: 6, backgroundColor: c.stone, borderStartWidth: 2, borderColor: c.gold,
       ...(mode === 'study' && { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }) }}>
       <View>
-        <Label>{selected === sample ? 'SAMPLE BAY' : 'SELECTED ILLUSTRATIVE BAY'}</Label>
-        <Display size={mode === 'study' ? 24 : 28}>{selected}</Display>
+        <Label>{selected && selected === assigned ? 'YOUR CURRENT ALLOCATION' : selected ? 'SELECTED POSITION' : 'CURRENT ALLOCATION'}</Label>
+        <Display size={mode === 'study' ? 24 : 28}>{selected ?? (allocation ? 'Outside this schematic' : 'No current bay')}</Display>
       </View>
-      <Note>{selectedBay.area} · Synthetic bay</Note>
+      <Note>{selectedBay ? info : allocation || 'Select a position to inspect it.'}</Note>
     </View>
   </SignatureShell>;
 }
