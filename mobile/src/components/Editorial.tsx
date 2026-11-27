@@ -15,16 +15,20 @@ export function DesignPreviewProvider({ children }: { children: ReactNode }) {
 export const useDesignPreview = () => useContext(PreviewContext);
 
 export function usePreviewMotion() {
+  return usePreviewMotionPreference() === true;
+}
+
+export function usePreviewMotionPreference() {
   const { enabled } = useDesignPreview();
-  const [reduce, setReduce] = useState(true);
+  const [reduce, setReduce] = useState<boolean | null>(null);
   useEffect(() => {
     if (!enabled) return;
     let mounted = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then(value => { if (mounted) setReduce(value); }).catch(() => {});
+    void AccessibilityInfo.isReduceMotionEnabled().then(value => { if (mounted) setReduce(value); }).catch(() => { if (mounted) setReduce(true); });
     const listener = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
     return () => { mounted = false; listener.remove(); };
   }, [enabled]);
-  return enabled && !reduce;
+  return enabled && (reduce === null ? null : !reduce);
 }
 
 // Owner-locked Phase 5B palette. Changes require explicit owner approval.
