@@ -1,15 +1,15 @@
-import { useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { PanResponder, Platform, Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import layout from '../data/parkingStudy.json';
 import { Control, Display, Label, Note, useEditorial } from './Editorial';
+import { ParkingStudyViewport } from './ParkingStudyViewport';
 import { SignatureShell, StudioButton } from './Signature';
+import { useTheme } from '../theme';
 
-const drawing = { width: 436, height: 404 };
-const drawingBays = [
-  ...['A-10', 'A-11', 'A-12', 'A-13', 'A-14', 'A-15'].map((name, index) => ({ name, x: 79 + index * 46, y: 73, area: 'Covered' })),
-  ...['B-10', 'B-11', 'B-12', 'B-13', 'B-14', 'B-15'].map((name, index) => ({ name, x: 79 + index * 46, y: 206, area: 'Covered' })),
-  ...['C-01', 'C-02', 'C-03', 'C-04', 'C-05'].map((name, index) => ({ name, x: 102 + index * 46, y: 320, area: 'Outdoor' })),
-] as const;
-const sample = 'A-12';
+const { drawing, sample, baySize } = layout;
+const drawingBays = layout.rows.flatMap(row => row.names.map((name, index) => ({ name, x: row.x + index * row.spacing, y: row.y, area: row.area })));
+const areaStyle = ({ x, y, width, depth }: typeof layout.covered) => ({ left: x, top: y, width, height: depth });
 const clamp = (value: number, limit: number) => Math.max(-limit, Math.min(limit, value));
 type Camera = { zoom: number; x: number; y: number };
 const fitted: Camera = { zoom: 1, x: 0, y: 0 };
@@ -24,14 +24,19 @@ function touchCenter(event: GestureResponderEvent) {
 
 export function ArchitecturalPlan({ onReturn }: { onReturn: () => void }) {
   const c = useEditorial();
+  const { isDark } = useTheme();
   const [size, setSize] = useState({ width: 0, height: 340 });
   const [camera, setCamera] = useState(fitted);
   const current = useRef(fitted);
   const gesture = useRef<ReturnType<typeof touchCenter>>(undefined);
   const [dragging, setDragging] = useState(false);
-  const [list, setList] = useState(false);
+  const [mode, setMode] = useState<'drawing' | 'study' | 'list'>('drawing');
+  const [studyError, setStudyError] = useState(false);
   const [selected, setSelected] = useState(sample);
   const selectedBay = drawingBays.find(bay => bay.name === selected)!;
+  const closeStudy = useCallback(() => { setMode('drawing'); setDragging(false); }, [setMode, setDragging]);
+  const failStudy = useCallback(() => { closeStudy(); setStudyError(true); }, [closeStudy, setStudyError]);
+  useFocusEffect(useCallback(() => closeStudy, [closeStudy]));
   const fit = Math.min(size.width / drawing.width, size.height / drawing.height);
   const scale = fit * camera.zoom;
   const setView = useMemo(() => (zoom: number, x: number, y: number) => {
@@ -72,18 +77,23 @@ export function ArchitecturalPlan({ onReturn }: { onReturn: () => void }) {
       <Note>Synthetic layout. Use on-site signage for your actual bay.</Note>
     </View>
     <View style={{ marginHorizontal: 12, borderWidth: 1, borderColor: c.rule, backgroundColor: c.stone }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', paddingHorizontal: 10 }}>
-        <Control title={list ? 'Show plan drawing' : 'Accessible bay list'} onPress={() => setList(!list)} />
-        {!list && <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
+      <View style={{ flexDirection: 'row', gap: 14, flexWrap: 'wrap', paddingHorizontal: 10 }}>
+        {Platform.OS === 'android' && <Control title="3D study" emphasis={mode === 'study'} onPress={() => { setStudyError(false); setMode('study'); }} />}
+        <Control title="2D drawing" emphasis={mode === 'drawing'} onPress={closeStudy} />
+        <Control title="Accessible bay list" emphasis={mode === 'list'} onPress={() => { setDragging(false); setMode('list'); }} />
+      </View>
+      {studyError && mode === 'drawing' && <View style={{paddingHorizontal:12}}><Note>3D study unavailable. The 2D drawing and bay list are available.</Note></View>}
+      {mode === 'drawing' && <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', paddingHorizontal: 10 }}>
           <Control title="Zoom out" disabled={camera.zoom <= 1} onPress={() => setView(camera.zoom / 1.35, camera.x, camera.y)} />
           <Control title="Zoom in" disabled={camera.zoom >= 2.7} onPress={() => setView(camera.zoom * 1.35, camera.x, camera.y)} />
           <Control title="Fit plan" onPress={() => setView(1, 0, 0)} />
-        </View>}
-      </View>
-      {list ? <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+      </View>}
+      {mode === 'study' ? <ParkingStudyViewport key={isDark ? 'dark' : 'light'} selected={selected} onSelection={name => {
+        if (drawingBays.some(bay => bay.name === name)) setSelected(name);
+      }} onDragging={setDragging} onClose={closeStudy} onError={failStudy} /> : mode === 'list' ? <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
         {drawingBays.map(bay => <Pressable key={bay.name} accessibilityRole="button" accessibilityState={{ selected: bay.name === selected }}
           onPress={() => setSelected(bay.name)} style={{ minHeight: 46, justifyContent: 'center', borderTopWidth: 1, borderColor: c.rule }}>
-          <Note>{bay.name} · {bay.area}{bay.name === sample ? ' · Sample assignment' : ''}</Note>
+          <Note>{bay.name} · {bay.area}{bay.name === sample ? ' · Sample bay' : ''}</Note>
         </Pressable>)}
       </View> : <View onLayout={event => {
         const { width, height } = event.nativeEvent.layout;
@@ -91,21 +101,21 @@ export function ArchitecturalPlan({ onReturn }: { onReturn: () => void }) {
       }} {...pan.panHandlers} accessibilityLabel="Synthetic top-down plan" style={{ height: 340, overflow: 'hidden', backgroundColor: c.paper, borderTopWidth: 1, borderColor: c.rule }}>
         {!!fit && <View style={{ position: 'absolute', width: drawing.width, height: drawing.height,
           left: (size.width - drawing.width) / 2 + camera.x, top: (size.height - drawing.height) / 2 + camera.y, transform: [{ scale }] }}>
-          <View pointerEvents="none" style={[styles.absolute, { left: 53, top: 47, width: 330, height: 223, backgroundColor: c.stone, borderColor: c.rule, borderWidth: 2 }]} />
-          <View pointerEvents="none" style={[styles.absolute, { left: 72, top: 294, width: 292, height: 95, backgroundColor: c.plate, borderColor: c.rule, borderWidth: 1, borderStyle: 'dashed' }]} />
-          <View pointerEvents="none" style={[styles.absolute, { left: 355, top: 188, width: 26, height: 132, borderColor: c.rule, borderEndWidth: 1, borderStartWidth: 1, backgroundColor: c.plate }]} />
-          <View pointerEvents="none" style={[styles.absolute, { left: 24, right: 24, top: 145, height: 53, backgroundColor: c.plate, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, borderBlockColor: c.rule, borderTopWidth: 1, borderBottomWidth: 1 }]}>
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.covered), { backgroundColor: c.stone, borderColor: c.rule, borderWidth: 2 }]} />
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.outdoor), { backgroundColor: c.plate, borderColor: c.rule, borderWidth: 1, borderStyle: 'dashed' }]} />
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.connector), { borderColor: c.rule, borderEndWidth: 1, borderStartWidth: 1, backgroundColor: c.plate }]} />
+          <View pointerEvents="none" style={[styles.absolute, areaStyle(layout.aisle), { backgroundColor: c.plate, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, borderBlockColor: c.rule, borderTopWidth: 1, borderBottomWidth: 1 }]}>
             <Text style={[styles.label, { color: c.gold }]}>Entry →</Text>
             <Text style={[styles.label, { color: c.muted }]}>Driving aisle  →</Text>
             <Text style={[styles.label, { color: c.gold }]}>→ Exit</Text>
           </View>
           <Text style={[styles.absolute, styles.label, { left: 56, top: 25, color: c.muted }]}>COVERED COURT</Text>
           <Text style={[styles.absolute, styles.label, { left: 100, top: 300, color: c.muted }]}>OUTDOOR COURT</Text>
-          {[72, 212, 378].flatMap(x => [65, 132, 201, 260].map(y => <View key={x + '-' + y} pointerEvents="none"
+          {layout.columnXs.flatMap(x => layout.columnYs.map(y => <View key={x + '-' + y} pointerEvents="none"
             style={[styles.absolute, { left: x, top: y, width: 8, height: 8, backgroundColor: c.muted }]} />))}
           {drawingBays.map(bay => <Pressable key={bay.name} accessibilityRole="button" accessibilityLabel={bay.name + ', ' + bay.area}
             accessibilityState={{ selected: bay.name === selected }} onPress={() => setSelected(bay.name)}
-            style={[styles.absolute, { left: bay.x, top: bay.y, width: 43, height: 55, borderWidth: bay.name === selected ? 2 : 1,
+            style={[styles.absolute, { left: bay.x, top: bay.y, width: baySize.width, height: baySize.depth, borderWidth: bay.name === selected ? 2 : 1,
               borderColor: bay.name === selected ? c.gold : c.rule, backgroundColor: bay.name === sample ? c.gold : c.paper,
               justifyContent: 'center', alignItems: 'center' }]}>
             <Text maxFontSizeMultiplier={1.3} style={[styles.label, { color: bay.name === sample ? c.paper : c.ink }]}>{bay.name}</Text>
@@ -113,10 +123,13 @@ export function ArchitecturalPlan({ onReturn }: { onReturn: () => void }) {
         </View>}
       </View>}
     </View>
-    <View accessibilityLiveRegion="polite" style={{ margin: 16, padding: 14, gap: 4, backgroundColor: c.stone, borderStartWidth: 2, borderColor: c.gold }}>
-      <Label>{selected === sample ? 'SAMPLE ASSIGNMENT' : 'SELECTED ILLUSTRATIVE BAY'}</Label>
-      <Display size={28}>{selected}</Display>
-      <Note>{selectedBay.area} · Synthetic bay for demonstration</Note>
+    <View accessibilityLiveRegion="polite" style={{ margin: 12, padding: 12, gap: 6, backgroundColor: c.stone, borderStartWidth: 2, borderColor: c.gold,
+      ...(mode === 'study' && { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }) }}>
+      <View>
+        <Label>{selected === sample ? 'SAMPLE BAY' : 'SELECTED ILLUSTRATIVE BAY'}</Label>
+        <Display size={mode === 'study' ? 24 : 28}>{selected}</Display>
+      </View>
+      <Note>{selectedBay.area} · Synthetic bay</Note>
     </View>
   </SignatureShell>;
 }

@@ -1,0 +1,32 @@
+{
+  "drawing": { "width": 436, "height": 404 },
+  "metresPerUnit": { "x": 0.057, "z": 0.082 },
+  "sample": "A-12",
+  "baySize": { "width": 43, "depth": 55 },
+  "rows": [
+    { "names": ["A-10", "A-11", "A-12", "A-13", "A-14", "A-15"], "x": 79, "y": 73, "spacing": 46, "area": "Covered" },
+    { "names": ["B-10", "B-11", "B-12", "B-13", "B-14", "B-15"], "x": 79, "y": 206, "spacing": 46, "area": "Covered" },
+    { "names": ["C-01", "C-02", "C-03", "C-04", "C-05"], "x": 102, "y": 320, "spacing": 46, "area": "Outdoor" }
+  ],
+  "covered": { "x": 53, "y": 47, "width": 330, "depth": 223 },
+  "outdoor": { "x": 72, "y": 294, "width": 292, "depth": 95 },
+  "aisle": { "x": 24, "y": 145, "width": 388, "depth": 53 },
+  "connector": { "x": 355, "y": 188, "width": 26, "depth": 132 },
+  "columnXs": [72, 212, 378],
+  "columnYs": [65, 132, 201, 260],
+  "plinth": { "x": 9, "y": 10, "width": 417, "depth": 385 },
+  "curbs": [
+    { "x": 49, "y": 44, "width": 334, "depth": 4 },
+    { "x": 49, "y": 265, "width": 303, "depth": 6 },
+    { "x": 75, "y": 371, "width": 285, "depth": 12 }
+  ],
+  "planters": [
+    { "x": 77, "y": 374, "width": 45, "depth": 8 },
+    { "x": 310, "y": 374, "width": 45, "depth": 8 }
+  ],
+  "roofStrips": [
+    { "x": 54, "y": 48, "width": 331, "depth": 18 },
+    { "x": 61, "y": 257, "width": 291, "depth": 13 }
+  ],
+  "pavingJoints": { "x": [33, 97, 160, 225, 289, 352, 403], "runs": [[20, 46], [271, 292], [365, 387]] }
+}

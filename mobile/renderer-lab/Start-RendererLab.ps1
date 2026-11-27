@@ -11,7 +11,8 @@ if ($CompactTextures -and !(Test-Path -LiteralPath (Join-Path $stage 'garage-bru
     throw 'Generate garage-brutalist-compact.glb with compact_garage.py before opting in.'
 }
 foreach ($name in 'ToyCar.glb','viewer.js') { Copy-Item (Join-Path $assetDirectory $name) $stage }
-foreach ($name in 'index.html','diagnostic.js','garage.html','garage.js') { Copy-Item (Join-Path $PSScriptRoot $name) $stage }
+foreach ($name in 'index.html','diagnostic.js','garage.html','garage.js','parking-study.html','parking-study.js','parking-study-model.js') { Copy-Item (Join-Path $PSScriptRoot $name) $stage }
+Copy-Item (Join-Path $PSScriptRoot '../src/data/parkingStudy.json') $stage
 if ($CompactTextures) {
     $script = Get-Content -LiteralPath (Join-Path $stage 'garage.js') -Raw
     $script.Replace("'garage-brutalist.glb'", "'garage-brutalist-compact.glb'") |
