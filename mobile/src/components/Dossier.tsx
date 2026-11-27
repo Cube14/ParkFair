@@ -12,17 +12,19 @@ import { Control, Display, EditorialFrame, Label, Note, useDesignPreview, useEdi
 import { Action, Copy, Screen } from './Screen';
 
 type Cycle = { _id: string; cycleName: string; status: string };
-type Publication = { _id: string; draftId: string; revision: number; sequence: number };
+type Publication = { _id: string; draftId: string; revision: number; sequence: number; activatedAt?: string | null };
 const steps = ['Prepare', 'Review', 'Confirm', 'Publish', 'Communicate'];
 const fields = { flatNumber: 'Flat', slotNumber: 'Bay', vehicleNumber: 'Vehicle', notes: 'Notes' };
 const xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const blank = { flatNumber: '', slotNumber: '', vehicleNumber: '', notes: '' };
 function Field({ label, value, set }: { label: string; value: string; set: (value: string) => void }) {
   const { colors } = useTheme();
+  const { enabled } = useDesignPreview();
+  const c = useEditorial();
   return <View style={{ gap: 4 }}>
     <Copy>{label}</Copy>
     <TextInput accessibilityLabel={label} value={value} onChangeText={set}
-      autoCorrect={false} style={{ minHeight: 48, fontSize: 16, padding: 12, color: colors.text, backgroundColor: colors.surface }} />
+      autoCorrect={false} style={{ minHeight: 48, fontSize: 16, padding: 12, color: enabled ? c.ink : colors.text, backgroundColor: enabled ? c.stone : colors.surface }} />
   </View>;
 }
 
@@ -45,6 +47,7 @@ export default function Dossier() {
   const [file, setFile] = useState<InputFile>();
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof client.previewImport>>>();
   const [mapping, setMapping] = useState<ColumnMapping>({});
+  const [mappingField, setMappingField] = useState<keyof Row>();
   const [publication, setPublication] = useState<Publication>();
   const [comparison, setComparison] = useState<Awaited<ReturnType<typeof client.compare>>['changes']>();
   const [drawer, setDrawer] = useState(false);
@@ -60,6 +63,7 @@ export default function Dossier() {
   });
   const [index, setIndex] = useState<number | null>(null);
   const [exclusion, setExclusion] = useState({ flatNumber: '', reason: '' });
+  const [showExclusion, setShowExclusion] = useState(false);
   const [creatingCycle, setCreatingCycle] = useState(false);
   const [cycleForm, setCycleForm] = useState({ cycleName: '', startDate: '', endDate: '' });
   const [notification, setNotification] = useState<{ _id: string; count: number }[]>();
@@ -79,6 +83,22 @@ export default function Dossier() {
   const rows = draft?.version?.rows ?? [];
   const exclusions = draft?.version?.exclusions ?? [];
   const rowData = ({ flatNumber, slotNumber, vehicleNumber, notes }: Row): Row => ({ flatNumber, slotNumber, vehicleNumber, notes });
+  const issues = draft?.issues ?? draft?.version?.importIssues ?? [];
+  const groups = new Map<number | null, typeof issues>();
+  for (const issue of issues) groups.set(issue.row, [...(groups.get(issue.row) ?? []), issue]);
+  const choices = picker ? inventory.data?.data.filter(item => item.isActive !== false && item[picker]?.toLowerCase().includes(term.trim().toLowerCase())
+    && (picker !== 'vehicleNumber' || !row.flatNumber || item.flatId?.flatNumber === row.flatNumber)) : undefined;
+  const matchingRows = rows.map((item, i) => ({ item, i })).filter(({ item }) =>
+    [item.flatNumber, item.slotNumber, item.vehicleNumber].join(' ').toLowerCase().includes(filter.trim().toLowerCase()));
+  const canConfirm = draft?.draft.status === 'VALIDATED' && !conflict;
+
+  function openRow(target: number, field?: string) {
+    setRow(target >= 0 ? rowData(rows[target]) : blank);
+    setIndex(target);
+    setPicker(field === 'flatNumber' || field === 'slotNumber' || field === 'vehicleNumber' ? field : undefined);
+    setTerm('');
+    setDrawer(true);
+  }
 
   function run(task: () => Promise<void>) {
     if (busy) return;
@@ -101,6 +121,7 @@ export default function Dossier() {
     setDraft(next);
     setFile(undefined);
     setPreview(undefined);
+    setMappingField(undefined);
     setComparison(undefined);
     setPublication(undefined);
     setConflict(false);
@@ -117,6 +138,7 @@ export default function Dossier() {
     if (picked.canceled) return;
     setPreview(undefined);
     setFile(undefined);
+    setMappingField(undefined);
     const asset = picked.assets[0];
     const mime = asset.name.toLowerCase().endsWith('.xlsx') ? xlsx : asset.name.toLowerCase().endsWith('.csv') ? 'text/csv' : null;
     const local = new File(asset.uri);
@@ -148,7 +170,7 @@ export default function Dossier() {
   const Frame = enabled ? EditorialFrame : Screen;
   return <Frame title={enabled && stage === 1 ? "Allocation review" : "Allocation dossier"} eyebrow="PARKING OFFICE">
     {act('Parking office', () => router.replace('/occupancy'))}
-    {enabled && <View style={{ flexDirection:'row', gap:4 }}>
+    {enabled && <View accessible accessibilityLabel={'Stage ' + (stage + 1) + ' of 5: ' + steps[stage]} style={{ flexDirection:'row', gap:4 }}>
       {steps.map((label, i) => <View key={label} style={{ flex:1, gap:5 }}>
         <View style={{ height:3, backgroundColor:i <= stage ? ink.gold : ink.rule }} />
         <Text style={{ color:i === stage ? ink.ink : ink.muted, fontSize:10, fontWeight:i === stage ? '700' : '400' }}>{label}</Text>
@@ -189,6 +211,7 @@ export default function Dossier() {
       </>}
     </>}
     {cycle && !draft && <>
+      {drafts.isPending && <Note>Loading draft revisions…</Note>}
       {drafts.isError && act('Retry drafts', () => { void drafts.refetch(); })}
       {drafts.data?.drafts.filter(item => item.status !== 'CANCELLED').map(item => <View key={item._id}>
         {act('Open revision ' + item.revision + ' · ' + item.status, () => run(() => load(item._id)))}
@@ -200,20 +223,33 @@ export default function Dossier() {
       {act('Choose CSV or Excel file', () => run(pick), !editable || conflict)}
       {preview && <>
         <Copy>{file?.filename} · {preview.dataRows} rows</Copy>
-        {preview.columns.map(column => <Copy key={column.column}>{column.column} · {column.label}</Copy>)}
+        {!enabled && preview.columns.map(column => <Copy key={column.column}>{column.column} · {column.label}</Copy>)}
         {preview.importIssues.map((issue, i) => <Copy error key={i}>{issue.message}</Copy>)}
-        {(Object.keys(fields) as (keyof Row)[]).map(field => <Field key={field}
+        {enabled ? <View style={{ padding: 12, backgroundColor: ink.stone, gap: 3 }}>
+          <Label>WORKBOOK MAPPING</Label>
+          {(Object.keys(fields) as (keyof Row)[]).map(field => <View key={field}>
+            <Control title={fields[field] + ' · ' + (preview.columns.find(column => column.column === mapping[field])?.label ?? 'Unmapped')}
+              onPress={() => setMappingField(mappingField === field ? undefined : field)} disabled={busy} />
+            {mappingField === field && <View style={{ marginStart: 10, paddingStart: 12, borderStartWidth: 2, borderColor: ink.rule }}>
+              {preview.columns.map(column => <Control key={column.column} title={column.column + ' · ' + column.label}
+                disabled={busy || Object.entries(mapping).some(([other, value]) => other !== field && value === column.column)}
+                onPress={() => { setMapping({ ...mapping, [field]: column.column }); setMappingField(undefined); }} />)}
+              <Control title="Clear field mapping" onPress={() => { setMapping({ ...mapping, [field]: undefined }); setMappingField(undefined); }} />
+            </View>}
+          </View>)}
+        </View> : (Object.keys(fields) as (keyof Row)[]).map(field => <Field key={field}
           label={fields[field] + ' column number'} value={mapping[field]?.toString() ?? ''}
           set={value => setMapping({ ...mapping, [field]: value ? Number(value) : undefined })} />)}
         {act('Preview updated mapping', () => run(async () => {
           setPreview(await client.previewImport(id!, file!, mapping));
-        }), conflict)}
+        }), conflict || (enabled && (!mapping.flatNumber || !mapping.slotNumber)))}
+        {enabled && (!mapping.flatNumber || !mapping.slotNumber) && <Note>Map both the Flat and Bay columns to import.</Note>}
         {act('Replace draft rows from file', () => confirm('Import rows?', 'The upload creates a new draft revision.', async () => {
           setDraft(await client.upload(id!, revision!, file!, mapping));
           setFile(undefined);
           setPreview(undefined);
           setStage(1);
-        }), conflict)}
+        }), conflict || (enabled && (!mapping.flatNumber || !mapping.slotNumber)))}
       </>}
       {act('Review current rows', () => setStage(1))}
     </>}
@@ -230,16 +266,21 @@ export default function Dossier() {
       {!!draft.coverage && <Copy>{draft.coverage.totalAssignedFlats} of {draft.coverage.totalEligibleFlats} eligible flats assigned
         {'\n'}Unassigned · {draft.coverage.unassignedEligibleFlats.join(', ') || 'None'}
         {'\n'}Covered available · {draft.coverage.capacity.INSIDE.available} · Outdoor available · {draft.coverage.capacity.OUTSIDE.available}</Copy>}
-      {(draft.issues ?? draft.version?.importIssues ?? []).map((issue, i) =>
-        enabled ? <View key={i} style={{ borderBottomWidth:1,borderColor:ink.rule,paddingVertical:8 }}>
-          <Label>{issue.row ? 'ROW ' + issue.row : 'CHART'} · {(fields[issue.field as keyof Row] ?? issue.field).toUpperCase()}</Label>
-          <Copy error>{issue.message}</Copy>
-          {editable && !conflict && rows.some(item => item.row === issue.row) && <Control title={'Correct row ' + issue.row}
-            onPress={() => {
-              const target = rows.findIndex(item => item.row === issue.row);
-              setRow(rowData(rows[target])); setIndex(target); setPicker(undefined); setDrawer(true);
-            }} />}
-        </View> : <Copy error key={i}>{issue.row ? 'Row ' + issue.row + ' · ' : ''}{issue.message}</Copy>)}
+      {enabled && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
+        <Control title="Open chart drawer" onPress={() => { setFilter(''); setDrawer(true); }} />
+        <Control title="Validate and refresh coverage" emphasis disabled={busy || !editable || conflict}
+          onPress={() => run(async () => setDraft(applyDraftReview(draft, await client.validate(id!, revision!))))} />
+      </View>}
+      {enabled && !!issues.length && <Label>{issues.length} VALIDATION {issues.length === 1 ? 'ISSUE' : 'ISSUES'}</Label>}
+      {enabled ? Array.from(groups, ([rowNumber, rowIssues]) => {
+        const target = rows.findIndex(item => item.row === rowNumber);
+        return <View key={rowNumber ?? 'chart'} style={{ borderBottomWidth:1,borderColor:ink.rule,paddingVertical:8,gap:4 }}>
+          <Label>{rowNumber === null ? 'CHART' : 'ROW ' + rowNumber} · {rowIssues.length} {rowIssues.length === 1 ? 'ISSUE' : 'ISSUES'}</Label>
+          {rowIssues.map((issue, i) => <Note key={i}>{fields[issue.field as keyof Row] ?? issue.field} · {issue.message}</Note>)}
+          {editable && !conflict && target >= 0 && <Control title={'Correct row ' + rowNumber}
+            onPress={() => openRow(target, rowIssues.length === 1 ? rowIssues[0].field : undefined)} />}
+        </View>;
+      }) : issues.map((issue, i) => <Copy error key={i}>{issue.row ? 'Row ' + issue.row + ' · ' : ''}{issue.message}</Copy>)}
       {enabled && editable && !conflict && !!draft.coverage?.unassignedEligibleFlats.length && <View>
         <Label>UNCOVERED FLATS</Label>
         {draft.coverage.unassignedEligibleFlats.map(flatNumber => <Control key={flatNumber}
@@ -249,21 +290,26 @@ export default function Dossier() {
             setIndex(existing); setPicker('slotNumber'); setTerm(''); setDrawer(true);
           }} />)}
       </View>}
-      {act('Validate and refresh coverage', () => run(async () => {
+      {!enabled && act('Validate and refresh coverage', () => run(async () => {
         setDraft(applyDraftReview(draft, await client.validate(id!, revision!)));
       }), !editable || conflict)}
+      {enabled && editable && <Control title={showExclusion ? 'Close exclusion form' : 'Record an exclusion'} onPress={() => setShowExclusion(!showExclusion)} />}
+      {(!enabled || showExclusion) && <>
       <Field label="Excluded flat" value={exclusion.flatNumber} set={flatNumber => setExclusion({ ...exclusion, flatNumber })} />
       <Field label="Exclusion reason" value={exclusion.reason} set={reason => setExclusion({ ...exclusion, reason })} />
       {act('Record reviewed exclusion', () => run(async () => {
         setDraft(await client.editDraft(id!, revision!, rows.map(rowData),
           [...exclusions.filter(item => item.flatNumber !== exclusion.flatNumber.trim()), exclusion]));
         setExclusion({ flatNumber: '', reason: '' });
+        setShowExclusion(false);
       }), !editable || conflict || !exclusion.flatNumber.trim() || !exclusion.reason.trim())}
+      </>}
       {exclusions.map(item => <View key={item.flatNumber}><Copy>{item.flatNumber} · {item.reason}</Copy>
         {act('Remove exclusion for ' + item.flatNumber, () => run(async () => {
           setDraft(await client.editDraft(id!, revision!, rows.map(rowData), exclusions.filter(entry => entry.flatNumber !== item.flatNumber)));
         }), !editable || conflict)}</View>)}
-      {act('Continue to confirmation', () => { setComparison(undefined); setStage(2); }, draft.draft.status !== 'VALIDATED' || conflict)}
+      {enabled && !canConfirm && <Note>{conflict ? 'Reload the current revision to continue.' : 'Resolve open issues and validate this revision before confirming.'}</Note>}
+      {act('Continue to confirmation', () => { setComparison(undefined); setStage(2); }, !canConfirm)}
       {act('Back to prepare', () => setStage(0))}
     </>}
 
@@ -273,8 +319,8 @@ export default function Dossier() {
         setComparison((await client.compare(id!, revision! - 1, revision!)).changes);
       }))}
       {revision === 1 && <Copy>First revision · review the current chart.</Copy>}
-      {comparison?.map(change => <View key={change.row}>
-        <Copy>Row {change.row}</Copy>
+      {comparison?.map(change => <View key={change.row} style={enabled ? { padding: 12, backgroundColor: ink.stone, gap: 4 } : undefined}>
+        <Copy>Row {change.row}{change.previous ? change.current ? ' · Changed' : ' · Removed' : ' · Added'}</Copy>
         {(Object.keys(fields) as (keyof Row)[]).filter(field => change.previous?.[field] !== change.current?.[field])
           .map(field => <Copy key={field}>{fields[field]} · {change.previous?.[field] || '—'} → {change.current?.[field] || '—'}</Copy>)}
       </View>)}
@@ -294,9 +340,13 @@ export default function Dossier() {
       }), draft.draft.status !== 'APPROVED' || conflict)}
       {publication && <>
         <Copy>Published · version {publication.sequence}</Copy>
+        {enabled && <Note>{publication.activatedAt ? 'Activated ' + new Date(publication.activatedAt).toLocaleString() : 'Awaiting activation'}</Note>}
         {act('Activate manually', () => confirm('Activate publication ' + publication.sequence + '?',
           'Use this published chart for ' + cycle.cycleName + '. The server checks inventory and dates.', async () => {
           await client.activate(cycle._id, publication._id);
+          const result = await read<{ publications: Publication[] }>('/allocation-drafts/publications/' + cycle._id, new AbortController().signal);
+          setPublication(result.publications.find(item => item._id === publication._id) ?? publication);
+          void cycles.refetch();
           setNotice('Cycle activated.');
         }), conflict)}
         <Copy>Schedule requests record an intent. Automatic execution is disabled in production.</Copy>
@@ -329,7 +379,7 @@ export default function Dossier() {
       {notification?.length === 0 && <Copy>No notification entries.</Copy>}
       {act('Back to publication', () => setStage(3))}
     </>}
-    {draft && act('Open chart drawer', () => { setFilter(''); setDrawer(true); })}
+    {draft && (!enabled || stage !== 1) && act('Open chart drawer', () => { setFilter(''); setDrawer(true); })}
     {draft && act('View draft activity', () => run(async () => {
       const activity = await read<{ events: { action: string; createdAt: string }[] }>('/allocation-drafts/audit/' + id, new AbortController().signal);
       Alert.alert('Draft activity', activity.events.slice(0, 6).map(event =>
@@ -343,7 +393,7 @@ export default function Dossier() {
 
     <Modal visible={drawer} animationType={motion ? 'slide' : 'none'} transparent={enabled} presentationStyle={enabled ? "overFullScreen" : "formSheet"} onRequestClose={() => { if (!busy) { setDrawer(false); setIndex(null); } }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{flex:1,justifyContent:'flex-end', backgroundColor:enabled ? '#14171088' : undefined}}>
+        style={{flex:1,justifyContent:'flex-end', backgroundColor:enabled ? ink.ink + '55' : undefined}}>
       <View style={enabled ? { height:'88%', backgroundColor:ink.paper,borderTopLeftRadius:20,borderTopRightRadius:20,overflow:'hidden' } : {flex:1}}>
       {enabled && <Pressable accessibilityRole="button" accessibilityLabel="Dismiss sheet" onPress={() => {if (!busy) {setDrawer(false);setIndex(null);setPicker(undefined);}}}
         style={{alignItems:'center',paddingVertical:13}}><View style={{width:37,height:4,borderRadius:2,backgroundColor:ink.gold}} /></Pressable>}
@@ -351,28 +401,33 @@ export default function Dossier() {
         {error && <Copy error>{error}</Copy>}
         {index === null ? <>
           <Field label="Search flats, bays or vehicles" value={filter} set={setFilter} />
-          {rows.map((item, i) => ({ item, i })).filter(({ item }) =>
-            [item.flatNumber, item.slotNumber, item.vehicleNumber].join(' ').toLowerCase().includes(filter.trim().toLowerCase()))
-            .map(({ item, i }) => <View key={item.row}>{act('Row ' + item.row + ' · ' + item.flatNumber + ' / ' + item.slotNumber, () => {
-              setRow(rowData(item)); setIndex(i);
-            }, !editable || conflict)}</View>)}
-          {act('Add manual row', () => { setRow(blank); setIndex(-1); }, !editable || conflict)}
+          {!matchingRows.length && <Note>{rows.length ? 'No matching rows.' : 'No rows in this revision.'}</Note>}
+          {matchingRows.map(({ item, i }) => <View key={item.row} style={enabled ? { borderBottomWidth: 1, borderColor: ink.rule } : undefined}>
+            {act('Row ' + item.row + ' · ' + item.flatNumber + ' / ' + item.slotNumber, () => openRow(i), !editable || conflict)}
+            {enabled && <Note>{item.vehicleNumber || 'No vehicle specified'}{groups.has(item.row) ? ' · ' + groups.get(item.row)!.length + ' open issues' : ''}</Note>}
+          </View>)}
+          {act('Add manual row', () => openRow(-1), !editable || conflict)}
           {act('Close chart', () => setDrawer(false))}
         </> : <>
           {(['flatNumber','slotNumber','vehicleNumber'] as const).map(field =>
-            <Action key={field} label={'Choose registered ' + fields[field].toLowerCase()} onPress={() => { setPicker(field); setTerm(''); }} />)}
+            <Action key={field} label={enabled ? fields[field] + ' · ' + (row[field] || 'Select registered ' + fields[field].toLowerCase()) : 'Choose registered ' + fields[field].toLowerCase()}
+              onPress={() => { setPicker(field); setTerm(''); }} />)}
           {picker && <>
             <Field label="Filter registered values" value={term} set={setTerm} />
+            {inventory.isPending && <Note>Loading registered {fields[picker].toLowerCase()} options…</Note>}
             {inventory.isError && act('Retry inventory', () => { void inventory.refetch(); })}
-            {inventory.data?.data.filter(item => item.isActive !== false && item[picker]?.toLowerCase().includes(term.toLowerCase())
-              && (picker !== 'vehicleNumber' || !row.flatNumber || item.flatId?.flatNumber === row.flatNumber)).map(item =>
+            {choices?.length === 0 && <Note>No matching registered values.</Note>}
+            {choices?.map(item =>
               <Action key={item[picker]} label={item[picker]!} onPress={() => {
-                setRow({ ...row, [picker]: item[picker], ...(picker === 'flatNumber' && {vehicleNumber: ''}) });
+                setRow({ ...row, [picker]: item[picker], ...(picker === 'flatNumber' && row.flatNumber !== item.flatNumber && {vehicleNumber: ''}) });
                 setPicker(undefined);
               }} />)}
+            {enabled && picker === 'vehicleNumber' && <Control title="Clear vehicle" onPress={() => {
+              setRow({ ...row, vehicleNumber: '' }); setPicker(undefined);
+            }} />}
             {act('Close choices', () => setPicker(undefined))}
           </>}
-          {(Object.keys(fields) as (keyof Row)[]).map(field =>
+          {(enabled ? ['notes'] as const : Object.keys(fields) as (keyof Row)[]).map(field =>
             <Field key={field} label={fields[field]} value={row[field] ?? ''} set={value => setRow({ ...row, [field]: value })} />)}
           {act('Save correction', saveRow, conflict || !row.flatNumber.trim() || !row.slotNumber.trim())}
           {index >= 0 && act('Remove row', () => confirm('Remove chart row?', 'This creates a new draft revision.', async () => {
@@ -380,7 +435,7 @@ export default function Dossier() {
             setIndex(null);
             setStage(1);
           }), conflict)}
-          {act('Back to chart', () => setIndex(null))}
+          {act('Back to chart', () => { setIndex(null); setPicker(undefined); })}
         </>}
         {busy && <Text style={{ color: colors.text }}>Saving…</Text>}
       </Screen>

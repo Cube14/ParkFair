@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Animated, Image, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { AdminOccupancy } from '../api';
 import { useTheme } from '../theme';
 import { useDesignPreview, useEditorial, usePreviewMotion, type ParkingPanel } from './Editorial';
 import { TabGlyph } from './TabGlyph';
@@ -205,47 +204,6 @@ export function SceneStatus({ busy, text }: {busy:boolean;text:string}) {
   return <View accessible accessibilityLiveRegion="polite" style={{flexDirection:'row',gap:8,alignItems:'center'}}>
     {busy && <ActivityIndicator color={c.signal}/>}<Text style={{color:c.ink,fontSize:14}}>{text}</Text>
   </View>;
-}
-
-type OfficeSection = 'Flats' | 'Vehicles' | 'Inventory' | 'Cycles';
-export function SignatureOffice({ data, pending, retry, navigate, onDossier, onSettings }: {
-  data?: AdminOccupancy['data']; pending:boolean; retry?:()=>void;
-  navigate:(section:OfficeSection)=>void; onDossier:()=>void; onSettings:()=>void;
-}) {
-  const c = useSignaturePalette();
-  const occupancy = data?.totalCapacity ? Math.max(0, Math.min(1, data.activeCycleAssignments / data.totalCapacity)) : 0;
-  return <SignatureShell title="Parking Office">
-    <View style={{padding:18,gap:8,backgroundColor:c.panel}}>
-      <Text style={{letterSpacing:2.5,color:c.signal,fontWeight:'800',fontSize:11}}>SOCIETY OPERATIONS</Text>
-      <Text accessibilityRole="header" style={{color:c.ink,fontSize:36,fontWeight:'600'}}>Parking Office</Text>
-      <Text style={{color:c.muted}}>{data?.activeCycle ?? (pending ? 'Loading occupancy…' : retry ? 'Occupancy unavailable' : 'No active cycle')}</Text>
-      {data && <>
-        <View accessibilityLabel={Math.round(occupancy*100)+' percent assigned'} accessible
-          style={{flexDirection:'row',height:32,gap:4,marginVertical:10}}>
-          {Array.from({length:16},(_,i)=><View key={i} style={{flex:1,backgroundColor:i < Math.round(occupancy*16)?c.signal:c.line}}/>)}
-        </View>
-        <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',gap:12}}>
-          {[['Assigned',data.activeCycleAssignments],['Available',data.availableCapacity],['Capacity',data.totalCapacity]].map(([label,value])=>
-            <View key={label}><Text style={{color:c.ink,fontSize:32,fontWeight:'300'}}>{value}</Text><Text style={{color:c.muted}}>{label}</Text></View>)}
-        </View>
-      </>}
-      {retry && <StudioButton title="Retry occupancy" onPress={retry}/>}
-    </View>
-    <View style={{padding:18,gap:8,borderColor:c.line,borderTopWidth:1,borderBottomWidth:1}}>
-      <Text style={{color:c.ink,fontSize:23,fontWeight:'600'}}>Allocation dossier</Text>
-      <Text style={{color:c.muted}}>Prepare, validate and publish parking assignments.</Text>
-      <StudioButton title="Open allocation workspace" bright onPress={onDossier}/>
-    </View>
-    <View style={{padding:12,flexDirection:'row',flexWrap:'wrap',gap:8}}>
-      {(['Flats','Vehicles','Inventory','Cycles'] as const).map((section,i)=><Pressable key={section} accessibilityRole="button"
-        onPress={()=>navigate(section)} style={{width:'47%',minHeight:67,padding:10,borderBottomWidth:1,borderColor:c.line,
-          flexDirection:'row',alignItems:'center',gap:8}}>
-        <TabGlyph name={['account','garage','parking','schedule'][i]} color={c.signal}/>
-        <Text style={{color:c.ink,fontSize:16,fontWeight:'600'}}>{section}</Text>
-      </Pressable>)}
-    </View>
-    <StudioButton title="Office settings" onPress={onSettings}/>
-  </SignatureShell>;
 }
 
 const styles = StyleSheet.create({

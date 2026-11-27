@@ -4,19 +4,22 @@ import { useEffect, useState } from 'react';
 import { Alert, BackHandler, Pressable, Text, TextInput, View } from 'react-native';
 import { useSession } from '../../session';
 import { useTheme } from '../../theme';
-import { useDesignPreview } from '../../components/Editorial';
-import { SignatureOffice } from '../../components/Signature';
+import { Display, EditorialFrame, Label, useDesignPreview, useEditorial } from '../../components/Editorial';
+import { nextPlannedCycle, ParkingOffice, type OfficeBay, type OfficeCycle } from '../../components/ParkingOffice';
 import { Action, Copy, Screen } from '../../components/Screen';
 import type { AdminOccupancy } from '../../api';
+import type { DraftResponse } from '../../parkingClient';
 
 const sections = { Flats: '/flats', Vehicles: '/vehicles', Inventory: '/slots', Cycles: '/cycles' };
 type Section = keyof typeof sections;
-type Entry = { _id: string; flatNumber?: string; slotNumber?: string; vehicleNumber?: string; cycleName?: string; status?: string; maxCapacity?: number; vehicleCount?: number; isActive?: boolean; flatId?: {_id:string;flatNumber:string}; account?: {exists:boolean;isActive:boolean;userId?:string} };
+type Entry = OfficeBay & Partial<OfficeCycle> & { _id: string; flatNumber?: string; slotNumber?: string; vehicleNumber?: string; vehicleCount?: number; flatId?: {_id:string;flatNumber:string}; account?: {exists:boolean;isActive:boolean;userId?:string} };
 export default function Workspace() {
   const router = useRouter();
   const {enabled} = useDesignPreview();
   const { session, read, request, signOut } = useSession();
   const { colors } = useTheme();
+  const c = useEditorial();
+  const fieldStyle = { color: enabled ? c.ink : colors.text, backgroundColor: enabled ? c.stone : colors.surface, padding: 14, minHeight: 48 };
   const [section, setSection] = useState<Section>();
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
@@ -34,9 +37,19 @@ export default function Workspace() {
   const { appearance, setAppearance } = useTheme();
   const base = ['allocation-admin', session?.user.id];
   const overview = useQuery({ queryKey: [...base,'dashboard'], queryFn: ({signal}) => read<AdminOccupancy>('/dashboard', signal) });
+  const officeCycles = useQuery({queryKey: [...base, 'cycles'], enabled,
+    queryFn: ({signal}) => read<{data:OfficeCycle[]}>('/cycles', signal)});
+  const officeBays = useQuery({queryKey: [...base, 'Inventory'], enabled,
+    queryFn: ({signal}) => read<{data:Entry[]}>('/slots', signal)});
+  const planned = nextPlannedCycle(officeCycles.data?.data);
+  const plannedDrafts = useQuery({queryKey: [...base, planned?._id, 'drafts'], enabled: enabled && !!planned && !planned.latestPublicationId,
+    queryFn: ({signal}) => read<{drafts: DraftResponse['draft'][]}>('/allocation-drafts?cycleId=' + encodeURIComponent(planned!._id), signal)});
+  const pendingDraft = plannedDrafts.data?.drafts.find(item => item.status !== 'CANCELLED');
+  const review = useQuery({queryKey: [...base, 'parking-office-coverage', pendingDraft?._id, pendingDraft?.revision], enabled: enabled && !!pendingDraft,
+    queryFn: ({signal}) => read<{revision: number; issues: NonNullable<DraftResponse['issues']>}>('/allocation-drafts/' + pendingDraft!._id + '/coverage', signal)});
   const directory = useQuery({ queryKey: [...base,section], enabled: !!section,
     queryFn: ({signal}) => read<{data:Entry[]}>(sections[section!], signal) });
-  function open(value?:Section) { setSection(value); setSearch(''); setAdding(false); setMessage(''); setNumber(''); setFlat(''); setResident(undefined); setPassword(''); setSettings(false); }
+  function open(value?:Section) { setSection(value); setSearch(''); setAdding(false); setMessage(''); setNumber(''); setFlat(''); setSide('A'); setResident(undefined); setPassword(''); setSettings(false); }
   useEffect(() => {
     const back = BackHandler.addEventListener('hardwareBackPress', () => {
       if (busy) return true;
@@ -94,10 +107,15 @@ export default function Workspace() {
       }},
     ]);
   }
-  if (enabled && !section && !settings) return <SignatureOffice data={overview.data?.data} pending={overview.isPending}
-    retry={overview.isError ? () => { void overview.refetch(); } : undefined} navigate={open}
+  if (enabled && !section && !settings) return <ParkingOffice data={overview.data?.data} pending={overview.isPending}
+    cycles={officeCycles.data?.data} bays={officeBays.data?.data}
+    pendingReview={review.data && pendingDraft ? {revision: review.data.revision, status: pendingDraft.status, issueCount: review.data.issues.length} : undefined}
+    retry={overview.isError || officeCycles.isError || officeBays.isError ? () => { void Promise.all([overview.refetch(), officeCycles.refetch(), officeBays.refetch()]); } : undefined} navigate={open}
     onDossier={() => router.push('/allocations')} onSettings={() => setSettings(true)} />;
-  return <Screen title={settings ? 'Office settings' : resident ? 'Resident account' : section ?? 'Parking office'}>
+  const Frame = enabled ? EditorialFrame : Screen;
+  const matching = directory.data?.data.filter(entry => [entry.flatNumber, entry.slotNumber, entry.vehicleNumber, entry.cycleName, entry.status, entry.flatId?.flatNumber]
+    .some(value => value?.toLowerCase().includes(search.trim().toLowerCase())));
+  return <Frame title={settings ? 'Office settings' : resident ? 'Resident account' : section ?? 'Parking office'} eyebrow="PARKING OFFICE">
     {settings ? <>
       <Copy>{session?.user.username}</Copy>
       <Copy>Appearance · {appearance}</Copy>
@@ -109,7 +127,7 @@ export default function Workspace() {
       {resident.account?.userId && <Action label={resident.account.isActive ? 'Disable account' : 'Enable account'}
         disabled={busy} onPress={()=>updateResident('toggle')}/>}
       <TextInput value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" accessibilityLabel="Resident password"
-        placeholder="Resident password" placeholderTextColor={colors.secondary} style={{color:colors.text,backgroundColor:colors.surface,padding:14}}/>
+        placeholder="Resident password" placeholderTextColor={enabled ? c.muted : colors.secondary} style={fieldStyle}/>
       <Action label={resident.account?.userId ? 'Reset password' : 'Create resident account'} tone="primary"
         disabled={busy || password.length<8} onPress={()=>updateResident('password')}/>
       <Action label="Back to flats" tone="quiet" disabled={busy} onPress={()=>{setResident(undefined);setPassword('');}}/>
@@ -129,26 +147,33 @@ export default function Workspace() {
       <Action label="Sign out" tone="quiet" onPress={()=>void signOut().catch(()=>setMessage('Sign-out failed.'))}/>
     </> : <>
       <Action label="Back to overview" onPress={()=>open()} />
-      <TextInput accessibilityLabel="Search directory" placeholder="Search directory" placeholderTextColor={colors.secondary} value={search} onChangeText={setSearch} style={{backgroundColor:colors.surface,color:colors.text,padding:14}}/>
+      <TextInput accessibilityLabel="Search directory" placeholder="Search directory" placeholderTextColor={enabled ? c.muted : colors.secondary} value={search} onChangeText={setSearch} style={fieldStyle}/>
       {section !== 'Cycles' && (adding ? <>
         <Copy>{section === 'Inventory' ? 'New bay · capacity one' : section === 'Flats' ? 'New flat number' : 'Vehicle registration'}</Copy>
-        <TextInput accessibilityLabel="New identifier" value={number} onChangeText={setNumber} style={{color:colors.text,padding:14,backgroundColor:colors.surface}}/>
-        {section === 'Inventory' && ['A','B','OUTSIDE'].map(value=><Action key={value} label={'Side '+value} disabled={side===value} onPress={()=>setSide(value)}/>)}
-        {section === 'Vehicles' && flats.data?.data.map(entry=><Action key={entry._id} label={'Flat '+entry.flatNumber} disabled={flat===entry._id} onPress={()=>setFlat(entry._id)}/>)}
+        <TextInput accessibilityLabel="New identifier" value={number} onChangeText={setNumber} style={fieldStyle}/>
+        {section === 'Inventory' && <View style={{flexDirection:'row', flexWrap:'wrap', gap:12}}>{['A','B','OUTSIDE'].map(value=><Action key={value} label={value === 'OUTSIDE' ? 'Outdoor' : 'Covered '+value} disabled={side===value} onPress={()=>setSide(value)}/>)}</View>}
+        {section === 'Vehicles' && <>
+          {flats.isPending && <Copy>Loading registered flats…</Copy>}
+          {flats.isError && <Action label="Retry registered flats" onPress={()=>void flats.refetch()}/>}
+          {flats.data?.data.length === 0 && <Copy>Create a flat before registering a vehicle.</Copy>}
+          {flats.data?.data.map(entry=><Action key={entry._id} label={'Flat '+entry.flatNumber} disabled={flat===entry._id} onPress={()=>setFlat(entry._id)}/>)}
+        </>}
         <Action label="Save record" disabled={busy || !number.trim() || (section === 'Vehicles' && !flat)} onPress={()=>void saveRecord()}/><Action label="Cancel" onPress={()=>setAdding(false)}/>
       </> : <Action label={section === 'Flats' ? 'Add flat' : section === 'Inventory' ? 'Add bay' : 'Register vehicle'} onPress={()=>setAdding(true)}/>)}
       {section === 'Cycles' && <Action label="Plan or review a cycle" onPress={()=>router.push('/allocations')}/>}
       {directory.isPending && <Copy>Loading…</Copy>}
       {directory.isError && <Action label="Retry directory" onPress={()=>void directory.refetch()}/>}
-      {directory.data?.data.filter(e=>JSON.stringify(e).toLowerCase().includes(search.toLowerCase())).map(e=><View key={e._id} style={{paddingVertical:10,borderBottomWidth:1,borderColor:colors.line}}>
-        <Text style={{fontSize:22,color:colors.text}}>{e.flatNumber ?? e.vehicleNumber ?? e.slotNumber ?? e.cycleName}</Text>
-        <Copy>{e.account ? (e.account.exists ? (e.account.isActive?'Resident active':'Account disabled'):'No resident account')+' · '+e.vehicleCount+' vehicles' : e.flatId ? 'Flat '+e.flatId.flatNumber : e.maxCapacity ? 'Capacity '+e.maxCapacity : e.status}</Copy>
+      {matching?.map(e=><View key={e._id} style={{paddingVertical:10,gap:4,borderBottomWidth:1,borderColor:enabled ? c.rule : colors.line}}>
+        {enabled ? <Display size={25}>{e.flatNumber ?? e.vehicleNumber ?? e.slotNumber ?? e.cycleName}</Display> : <Text style={{fontSize:22,color:colors.text}}>{e.flatNumber ?? e.vehicleNumber ?? e.slotNumber ?? e.cycleName}</Text>}
+        {enabled && section === 'Cycles' && <Label>{e.status}{e.latestPublicationId ? ' · PUBLISHED' : ''}</Label>}
+        <Copy>{e.account ? (e.account.exists ? (e.account.isActive?'Resident active':'Account disabled'):'No resident account')+' · '+e.vehicleCount+' vehicles' : e.flatId ? 'Flat '+e.flatId.flatNumber+' · '+(e.isActive === false ? 'Inactive' : 'Active') : e.maxCapacity ? (e.side === 'OUTSIDE' ? 'Outdoor' : 'Covered '+e.side) + ' · Capacity '+e.maxCapacity : e.startDate && e.endDate ? e.startDate.slice(0,10)+' – '+e.endDate.slice(0,10) : e.status}</Copy>
         {section === 'Flats' && <Action label={'Manage resident · '+e.flatNumber} tone="quiet" onPress={()=>{setResident(e);setMessage('');}}/>}
         {section === 'Vehicles' && <Action label={(e.isActive === false ? 'Activate ' : 'Deactivate ') + e.vehicleNumber}
           tone="quiet" disabled={busy} onPress={()=>toggleVehicle(e)}/>}
       </View>)}
       {directory.data?.data.length === 0 && <Copy>No records.</Copy>}
+      {!!directory.data?.data.length && !matching?.length && <Copy>No matching records.</Copy>}
     </>}
     {!!message && <Copy error={failed}>{message}</Copy>}
-  </Screen>;
+  </Frame>;
 }

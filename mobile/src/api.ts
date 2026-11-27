@@ -14,6 +14,10 @@ export type AdminOccupancy = {
     activeCycleAssignments: number;
     totalCapacity: number;
     availableCapacity: number;
+    activeCycleStartDate?: string | null;
+    activeCycleEndDate?: string | null;
+    insideAssignments?: number;
+    outsideAssignments?: number;
   };
 };
 
