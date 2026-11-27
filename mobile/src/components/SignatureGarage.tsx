@@ -28,14 +28,14 @@ export function SignatureGarage({ registration, status }: {registration?:string;
     setReadyScene('');
   },[posterOpacity]);
   const fallback = useCallback(() => { setFailed(true); close(); },[close]);
-  const options = new URLSearchParams({surface:c.plate,ink:c.ink,paper:c.paper,rule:c.line,motion:motion?'1':'0',scene:'5d4b'}).toString();
+  const options = new URLSearchParams({surface:c.plate,ink:c.ink,paper:c.paper,rule:c.line,motion:motion?'1':'0',scene:'5d5'}).toString();
   const ready = readyScene === options;
 
   useFocusEffect(useCallback(() => {
     const controller = new AbortController();
     if (Platform.OS === 'android') {
       const timer = setTimeout(() => controller.abort(), 3000);
-      void fetch(lab + 'porsche.glb', {method:'HEAD',cache:'no-store',signal:controller.signal})
+      void fetch(lab + 'garage-brutalist.glb', {method:'HEAD',cache:'no-store',signal:controller.signal})
         .then(response => {
           if (controller.signal.aborted) return;
           setAvailable(response.ok);
@@ -122,7 +122,11 @@ export function SignatureGarage({ registration, status }: {registration?:string;
       </View>
       {interactive && ready && <Text accessibilityRole="link" style={{color:c.signal,minHeight:44,paddingTop:6,fontSize:13}}
         onPress={() => { void Linking.openURL('https://sketchfab.com/3d-models/free-porsche-911-carrera-4s-d01b254483794de3819786d93e0e1ebf').catch(() => {}); }}>
-        Lionsharp Studios · CC BY-SA 4.0
+        Porsche · Lionsharp Studios · CC BY-SA 4.0
+      </Text>}
+      {interactive && ready && <Text accessibilityRole="link" style={{color:c.signal,minHeight:32,fontSize:13}}
+        onPress={() => { void Linking.openURL('https://sketchfab.com/3d-models/brutalist-interior-0eb40f2cb2bf4dfdbaae36095825788a').catch(() => {}); }}>
+        Architecture · vslite · CC BY 4.0
       </Text>}
     </View>
     <View style={{paddingHorizontal:20,paddingVertical:12,gap:4}}>

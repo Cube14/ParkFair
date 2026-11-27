@@ -6,19 +6,14 @@
 <title>ParkFair private garage</title>
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:var(--surface);color:var(--ink);font:14px system-ui}
-.studio{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,var(--paper),var(--surface) 72%)}
-.studio::before{content:'';position:absolute;inset:6% 8% 30%;border-block-start:1px solid var(--rule);
-  background:linear-gradient(90deg,transparent 0 16%,var(--rule) 16% calc(16% + 1px),transparent calc(16% + 1px) 84%,var(--rule) 84% calc(84% + 1px),transparent calc(84% + 1px))}
-.studio::after{content:'';position:absolute;inset:70% 0 0;border-block-start:1px solid var(--rule);
-  background:linear-gradient(180deg,var(--surface),var(--paper))}
 model-viewer{position:relative;display:block;width:100%;height:100%;background:transparent}
 </style>
-<div class="studio" aria-hidden="true"></div>
-<model-viewer id="vehicle" src="porsche.glb" environment-image="neutral" exposure="0.88"
-  camera-controls touch-action="none" disable-pan interaction-prompt="none" camera-orbit="42deg 76deg 77%"
+<model-viewer id="vehicle" exposure="0.94" tone-mapping="commerce"
+  camera-controls touch-action="none" disable-pan interaction-prompt="none" camera-orbit="38deg 77deg 7.8m"
+  camera-target="0m 0.66m 0m"
   field-of-view="30deg" min-field-of-view="27deg" max-field-of-view="35deg"
-  min-camera-orbit="auto 46deg 67%" max-camera-orbit="auto 87deg 136%"
-  shadow-intensity="0.58" shadow-softness="0.42" alt="Porsche 911 Carrera 4S model by Lionsharp Studios"></model-viewer>
-<script type="module" src="garage.js?v=5d4b"></script>
+  min-camera-orbit="-48deg 75deg 6.1m" max-camera-orbit="76deg 88deg 8.8m"
+  shadow-intensity="0" alt="Illustrative Porsche 911 Carrera 4S in a private garage"></model-viewer>
+<script type="module" src="garage.js?v=5d5"></script>
 <script type="module" src="viewer.js"></script>
 </html>

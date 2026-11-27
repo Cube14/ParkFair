@@ -191,7 +191,7 @@ export function PorschePoster() {
   const c = useSignaturePalette();
   const {isDark} = useTheme();
   const height = usePorscheViewport();
-  const uri = 'http://127.0.0.1:8174/porsche-' + (isDark ? 'dark' : 'light') + '.jpg?v=android2';
+  const uri = 'http://127.0.0.1:8174/garage-brutalist-' + (isDark ? 'dark' : 'light') + '.jpg';
   const [failed,setFailed] = useState('');
   return <View style={{height,justifyContent:'center',backgroundColor:c.plate}}>
     {failed === uri ? <VehiclePortrait /> : <Image key={uri} source={{uri}} fadeDuration={0} resizeMode="cover"
