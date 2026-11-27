@@ -1,4 +1,4 @@
-const { visibleAssignments } = require("../services/assignmentVisibility");
+const { visibleAssignments, realAssignmentFilter } = require("../services/assignmentVisibility");
 const Flat = require("../models/Flat");
 const Vehicle = require("../models/Vehicle");
 const ParkingAssignment = require("../models/ParkingAssignment");
@@ -12,6 +12,7 @@ exports.getResidentDashboard = async (req, res) => {
   const cycle = await currentCycle();
   const assignment = cycle && await ParkingAssignment.findOne({
     flatId: flat._id,
+    ...await realAssignmentFilter(),
     ...visibleAssignments(cycle),
     assignmentStatus: "ACTIVE",
   }).sort({ createdAt: 1, _id: 1 }).populate("slotId").populate({
@@ -31,6 +32,7 @@ exports.getResidentDashboard = async (req, res) => {
       status: assignment.parkingType,
       slot: assignment.slotNumber ?? assignment.slotId?.slotNumber ?? "N/A",
       side: assignment.slotSide ?? assignment.slotId?.side ?? "",
+      ...(assignment.physicalSlotNumber && { physicalSlot: assignment.physicalSlotNumber, position: assignment.slotPosition }),
     } : null,
     cycle: cycle ? {
       id: cycle._id,

@@ -5,6 +5,9 @@ const parkingAssignmentSchema =
     {
       publicationId: { type: mongoose.Schema.Types.ObjectId, ref: "AllocationPublication" },
       flatNumber: String, slotNumber: String, slotSide: String, vehicleNumber: String, vehicleType: String,
+      physicalSlotNumber: String,
+      slotPosition: { type: String, enum: ["FULL", "A", "B", "SINGLE"] },
+      vehicleSize: { type: String, enum: ["SMALL", "BIG"] },
       cycleId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "ParkingCycle",

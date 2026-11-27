@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const vehicleSchema = new mongoose.Schema(
   {
+    size: { type: String, enum: ["SMALL", "BIG"] },
     vehicleNumber: {
       type: String,
       required: true,

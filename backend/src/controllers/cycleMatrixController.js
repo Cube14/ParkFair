@@ -1,9 +1,9 @@
-const { visibleAssignments } = require("../services/assignmentVisibility");
+const { visibleAssignments, realAssignmentFilter } = require("../services/assignmentVisibility");
 const ParkingCycle = require("../models/ParkingCycle");
 const ParkingAssignment = require("../models/ParkingAssignment");
 const ParkingSlot = require("../models/ParkingSlot");
 const { ApiError } = require("../middleware/apiErrors");
-const { parkingTypeFor } = require("../services/assignmentService");
+const { capacityFor } = require("../services/siddhaParking");
 
 async function getCycleMatrix(req, res) {
   const cycleId = req.params.cycleId;
@@ -11,20 +11,20 @@ async function getCycleMatrix(req, res) {
   if (!cycle) throw new ApiError(404, "Cycle not found.");
 
   const [slots, assignments] = await Promise.all([
-    ParkingSlot.find({ isActive: true }),
-    ParkingAssignment.find({ ...visibleAssignments(cycle), assignmentStatus: "ACTIVE" })
+    ParkingSlot.find(),
+    ParkingAssignment.find({ ...visibleAssignments(cycle), ...await realAssignmentFilter(), assignmentStatus: "ACTIVE" })
       .populate("flatId", "flatNumber").populate("slotId", "slotNumber"),
   ]);
   const slotCapacity = new Map();
-  for (const slot of slots) {
-    const label = parkingTypeFor(slot) === "OUTSIDE" ? "OUTSIDE" : slot.slotNumber;
-    slotCapacity.set(label, (slotCapacity.get(label) ?? 0) + slot.maxCapacity);
+  for (const [physical, group] of capacityFor(slots, assignments).groups) {
+    const label = group.type === "OUTSIDE" ? "OUTSIDE" : physical;
+    slotCapacity.set(label, (slotCapacity.get(label) ?? 0) + group.total);
   }
 
   const grouped = new Map(Array.from(slotCapacity.keys(), (label) => [label, []]));
-  for (const { slotId: slot, flatId: flat, parkingType } of assignments) {
+  for (const { slotId: slot, flatId: flat, parkingType, physicalSlotNumber } of assignments) {
     if (!slot || !flat) continue;
-    const label = parkingType === "OUTSIDE" ? "OUTSIDE" : slot.slotNumber;
+    const label = parkingType === "OUTSIDE" ? "OUTSIDE" : physicalSlotNumber ?? slot.slotNumber;
     if (!grouped.has(label)) grouped.set(label, []);
     grouped.get(label).push(flat.flatNumber);
   }

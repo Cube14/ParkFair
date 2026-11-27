@@ -1,9 +1,9 @@
-const { visibleAssignments } = require("../services/assignmentVisibility");
+const { visibleAssignments, realAssignmentFilter } = require("../services/assignmentVisibility");
 const ParkingCycle = require("../models/ParkingCycle");
 const ParkingAssignment = require("../models/ParkingAssignment");
 const ParkingSlot = require("../models/ParkingSlot");
 const { ApiError } = require("../middleware/apiErrors");
-const { parkingTypeFor } = require("../services/assignmentService");
+const { capacityFor } = require("../services/siddhaParking");
 
 async function getCycleSummary(req, res) {
   const cycleId = req.params.cycleId;
@@ -11,13 +11,12 @@ async function getCycleSummary(req, res) {
   if (!cycle) throw new ApiError(404, "Cycle not found.");
 
   const [assignments, slots] = await Promise.all([
-    ParkingAssignment.find({ ...visibleAssignments(cycle), assignmentStatus: "ACTIVE" }).populate("flatId", "flatNumber"),
-    ParkingSlot.find({ isActive: true }),
+    ParkingAssignment.find({ ...visibleAssignments(cycle), ...await realAssignmentFilter(), assignmentStatus: "ACTIVE" }).populate("flatId", "flatNumber"),
+    ParkingSlot.find(),
   ]);
   const inside = assignments.filter((assignment) => assignment.parkingType === "INSIDE");
   const outside = assignments.filter((assignment) => assignment.parkingType === "OUTSIDE");
-  const capacity = slots.reduce((sum, slot) => parkingTypeFor(slot) === "INSIDE"
-    ? sum + slot.maxCapacity : sum, 0);
+  const capacity = capacityFor(slots, assignments).counts.INSIDE.total;
   const flatNumbers = (group) => group.flatMap((assignment) => assignment.flatId ? [assignment.flatId.flatNumber] : []);
 
   res.json({

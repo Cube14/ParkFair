@@ -1,5 +1,5 @@
 const ParkingCycle = require("../models/ParkingCycle");
-const { visibleAssignments } = require("../services/assignmentVisibility");
+const { visibleAssignments, realAssignmentFilter } = require("../services/assignmentVisibility");
 const { ApiError } = require("../middleware/apiErrors");
 const ParkingAssignment = require("../models/ParkingAssignment");
 
@@ -8,6 +8,7 @@ async function getCycleLayout(req, res) {
   if (!cycle) throw new ApiError(404, "Cycle not found.");
   const assignments = await ParkingAssignment.find({
     ...visibleAssignments(cycle),
+    ...await realAssignmentFilter(),
     assignmentStatus: "ACTIVE",
   }).populate("slotId", "slotNumber").populate("flatId", "flatNumber");
 

@@ -5,9 +5,14 @@ const Allocation = require("../models/Allocation");
 const CreditLedger = require("../models/CreditLedger");
 const { INSIDE_SLOTS, ROTATION_DAYS } = require("../config/parkingConfig");
 const { ApiError } = require("../middleware/apiErrors");
+const ParkingSlot = require("../models/ParkingSlot");
+const { DOMAIN } = require("./siddhaParking");
 
 function generateFirstRotation() {
   return parkingWrite(async (session) => {
+    if (await ParkingSlot.exists({ domain: DOMAIN, isActive: true }).session(session)) {
+      throw new ApiError(409, "Use an allocation dossier for Siddha-A physical parking positions.");
+    }
     if (await Rotation.exists({ rotationNumber: 1 }).session(session)) {
       throw new ApiError(409, "Rotation #1 already exists");
     }

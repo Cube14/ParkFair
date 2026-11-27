@@ -7,6 +7,8 @@ const { ApiError } = require("../middleware/apiErrors");
 const { parkingWrite, audit } = require("./parkingWrite");
 const { assess } = require("./allocationValidation");
 const { visibleAssignments } = require("./assignmentVisibility");
+const Slot = require("../models/ParkingSlot");
+const { DOMAIN } = require("./siddhaParking");
 
 function checkedRevision(draft, expected) {
   if (draft.revision !== expected) throw new ApiError(409, "The draft changed. Reload its latest revision.");
@@ -48,7 +50,7 @@ async function sourceRows(cycle, session) {
   return assignments.map((entry, i) => ({
     row: i + 2,
     flatNumber: entry.flatId?.flatNumber ?? "",
-    slotNumber: entry.slotId?.slotNumber ?? "",
+    slotNumber: entry.slotNumber ?? entry.slotId?.slotNumber ?? "",
     vehicleNumber: entry.vehicleId?.vehicleNumber ?? "",
     notes: entry.notes ?? "",
   }));
@@ -78,8 +80,10 @@ function reviseDraft({ draftId, expectedRevision, actorId, rows, source, importI
       draftId, actorId, revision: ++draft.revision, source, rows, importIssues,
       exclusions: exclusions ?? prior.exclusions,
     }], { session });
+    const assessment = await Slot.exists({ domain: DOMAIN, isActive: true }).session(session) ?
+      await assess(await cycleById(draft.cycleId, session), version, session) : null;
     draft.status = "DRAFT";
-    draft.issues = importIssues;
+    draft.issues = assessment?.issues ?? importIssues;
     draft.validatedDigest = undefined;
     draft.approvedDigest = undefined;
     draft.approvedAt = undefined;
@@ -88,9 +92,9 @@ function reviseDraft({ draftId, expectedRevision, actorId, rows, source, importI
     await audit(session, {
       actorId, entityId: draft._id, revision: draft.revision,
       action: source === "MANUAL" ? "DRAFT_EDITED" : "DRAFT_IMPORTED",
-      counts: { rows: rows.length, errors: importIssues.length },
+      counts: { rows: rows.length, errors: draft.issues.length },
     });
-    return { draft, version };
+    return { draft, version, ...(assessment && { issues: assessment.issues, coverage: assessment.coverage }) };
   });
 }
 

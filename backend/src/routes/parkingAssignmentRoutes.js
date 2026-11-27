@@ -6,7 +6,8 @@ const requireDevReset = require("../middleware/requireDevReset");
 const { id, oneOf, optionalText, text, validateBody, validateIds } = require("../middleware/validateRequest");
 
 const bulkEntries = (items) => Array.isArray(items) && items.length > 0 && items.length <= 250 &&
-  items.every((item) => item && Object.keys(item).length === 2 && text(item.slotNumber) && text(item.flatNumber));
+  items.every((item) => item && Object.keys(item).every(key => ["slotNumber", "flatNumber", "vehicleNumber"].includes(key)) &&
+    text(item.slotNumber) && text(item.flatNumber) && (item.vehicleNumber === undefined || text(item.vehicleNumber)));
 
 router.get("/", getAssignments);
 router.post("/", validateBody({ cycleId: id, slotId: id, flatId: id, vehicleId: id }, {

@@ -1,4 +1,4 @@
-const { visibleAssignments } = require("./assignmentVisibility");
+const { visibleAssignments, realAssignmentFilter } = require("./assignmentVisibility");
 const { setTimeout: delay } = require("node:timers/promises");
 const Flat = require("../models/Flat");
 const ParkingAssignment = require("../models/ParkingAssignment");
@@ -13,7 +13,7 @@ function notificationFor(assignment, cycle) {
   }
   const start = formatCycleDate(cycle.startDate);
   const end = formatCycleDate(cycle.endDate);
-  const slotDisplay = parkingType === "OUTSIDE" ? "Outside Parking Area" : slot.slotNumber;
+  const slotDisplay = assignment.physicalSlotNumber ? assignment.slotNumber : parkingType === "OUTSIDE" ? "Outside Parking Area" : slot.slotNumber;
   return {
     flat: flat.flatNumber,
     owner: flat.ownerName,
@@ -41,7 +41,7 @@ _ParkFair automated notification_`,
 
 async function getNotificationBatch(cycleId, flatNumber) {
   const cycle = await notificationCycle(cycleId);
-  const filter = { ...visibleAssignments(cycle), assignmentStatus: "ACTIVE" };
+  const filter = { ...visibleAssignments(cycle), ...await realAssignmentFilter(), assignmentStatus: "ACTIVE" };
   if (flatNumber) {
     const flat = await Flat.findOne({ flatNumber });
     if (!flat) throw new ApiError(404, "Flat not found.");

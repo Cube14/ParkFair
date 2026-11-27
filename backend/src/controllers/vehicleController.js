@@ -4,6 +4,11 @@ const Vehicle = require("../models/Vehicle");
 const Flat = require("../models/Flat");
 const { ApiError } = require("../middleware/apiErrors");
 const { parkingWrite } = require("../services/parkingWrite");
+const ParkingSlot = require("../models/ParkingSlot");
+const ParkingCycle = require("../models/ParkingCycle");
+const { DOMAIN, compatibility } = require("../services/siddhaParking");
+const { visibleAssignments } = require("../services/assignmentVisibility");
+const { currentCycle } = require("../services/cycleSelection");
 
 async function getAllVehicles(req, res) {
   const data = await Vehicle.find().populate("flatId", "flatNumber ownerName");
@@ -13,6 +18,10 @@ async function getAllVehicles(req, res) {
 async function createVehicle(req, res) {
   const data = await parkingWrite(async (session) => {
     if (!await Flat.exists({ _id: req.body.flatId }).session(session)) throw new ApiError(404, "Flat not found.");
+    if ((req.body.vehicleType ?? "CAR") === "CAR" && !req.body.size &&
+        await ParkingSlot.exists({ domain: DOMAIN, isActive: true }).session(session)) {
+      throw new ApiError(400, "Choose a Small or Big classification for this car.");
+    }
     const [vehicle] = await Vehicle.create([req.body], { session });
     return vehicle;
   });
@@ -33,7 +42,19 @@ async function updateVehicle(req, res) {
       if (!await Flat.exists({ _id: flatId }).session(session)) throw new ApiError(404, "Flat not found.");
       if (await hasHistory(vehicle._id, session)) throw new ApiError(409, "A vehicle with parking history cannot change flats.");
     }
+    const changed = (req.body.size && vehicle.size !== req.body.size) || (req.body.vehicleType && vehicle.vehicleType !== req.body.vehicleType);
     vehicle.set(req.body);
+    if (changed && await ParkingSlot.exists({ domain: DOMAIN, isActive: true }).session(session)) {
+      if (vehicle.vehicleType === "CAR" && !vehicle.size) throw new ApiError(400, "Choose a Small or Big classification for this car.");
+      const effective = await currentCycle().session(session);
+      const staging = await ParkingCycle.distinct("_id", { status: "PLANNED", latestPublicationId: { $exists: false } }).session(session);
+      const assignments = await ParkingAssignment.find({ vehicleId: vehicle._id, assignmentStatus: "ACTIVE", $or: [
+        { cycleId: { $in: staging }, publicationId: { $exists: false } }, ...(effective ? [visibleAssignments(effective)] : []),
+      ] }).populate("slotId").session(session);
+      if (assignments.some(row => row.slotId?.domain === DOMAIN && compatibility(row.slotId, vehicle, true))) {
+        throw new ApiError(409, "This size conflicts with an effective or staged parking assignment. Correct the assignment first.");
+      }
+    }
     return vehicle.save({ session });
   });
   res.json({ success: true, data });

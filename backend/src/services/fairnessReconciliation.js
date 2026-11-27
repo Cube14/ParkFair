@@ -3,6 +3,7 @@ const ParkingAssignment = require("../models/ParkingAssignment");
 const Rotation = require("../models/Rotation");
 const Allocation = require("../models/Allocation");
 const CreditLedger = require("../models/CreditLedger");
+const { realAssignmentFilter } = require("./assignmentVisibility");
 
 function identity(row) {
   return `${row.flatId}:${row.vehicleId}`;
@@ -23,6 +24,7 @@ async function reconcileLegacyFairness() {
   const byCycle = new Map(cycles.map((cycle) => [String(cycle._id), cycle]));
   const [physical, fairness, ledgers, rotations] = await Promise.all([
     ParkingAssignment.find({
+      ...await realAssignmentFilter(),
       cycleId: { $in: cycles.map((cycle) => cycle._id) }, publicationId: { $exists: false },
       assignmentStatus: { $in: ["ACTIVE", "COMPLETED"] },
     }).select("cycleId flatId vehicleId parkingType").lean(),

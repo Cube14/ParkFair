@@ -23,6 +23,7 @@ const User = require("../src/models/User");
 const Flat = require("../src/models/Flat");
 const Vehicle = require("../src/models/Vehicle");
 const Slot = require("../src/models/ParkingSlot");
+const { setSiddhaInventory } = require("../src/services/siddhaInventory");
 const tls = { key: readFileSync(keyPath), cert: readFileSync(certPath), minVersion: "TLSv1.2" };
 
 async function start() {
@@ -37,24 +38,28 @@ async function start() {
   if (resume) {
     if (!await User.exists({ username: "mobile-admin", role: "ADMIN" })) throw new Error("Saved fixture unavailable.");
   } else {
-  const [one, two] = await Flat.create([{ flatNumber: "001" }, { flatNumber: "002" }]);
-  await Vehicle.create([{ flatId: one.id, vehicleNumber: "FIX-A" }, { flatId: two.id, vehicleNumber: "FIX-B" }]);
-  await Slot.create([
-    { slotNumber: "A-12", side: "A", maxCapacity: 1, displayOrder: 1 },
-    { slotNumber: "C-03", side: "OUTSIDE", maxCapacity: 2, displayOrder: 2 },
-  ]);
-  const hash = await bcrypt.hash(password, 10);
-  await User.create([
-    { username: "mobile-admin", role: "ADMIN", password: hash },
-    { username: "mobile-resident", flatId: one.id, password: hash },
-    { username: "mobile-other", flatId: two.id, password: hash },
-  ]);
+    const siddha = process.env.PARKFAIR_SIDDHA_FIXTURE === "1";
+    const flats = await Flat.create((siddha ? ["001", "002", "003"] : ["001", "002"]).map(flatNumber => ({ flatNumber })));
+    await Vehicle.create(flats.map((flat, i) => ({ flatId: flat.id, vehicleNumber: "FIX-" + "ABC"[i],
+      ...(siddha && { size: i === 2 ? "BIG" : "SMALL" }) })));
+    if (siddha) await setSiddhaInventory(true);
+    else await Slot.create([
+      { slotNumber: "A-12", side: "A", maxCapacity: 1, displayOrder: 1 },
+      { slotNumber: "C-03", side: "OUTSIDE", maxCapacity: 2, displayOrder: 2 },
+    ]);
+    const hash = await bcrypt.hash(password, 10);
+    const names = ["mobile-resident", "mobile-other", "mobile-third"];
+    await User.create([{ username: "mobile-admin", role: "ADMIN", password: hash },
+      ...flats.map((flat, i) => ({ username: names[i], flatId: flat.id, role: "RESIDENT", password: hash }))]);
   }
   const server = createServer(tls, app);
   server.on("error", async error => { console.error(error.code); process.exitCode = 1; await mongoose.disconnect(); });
   server.listen(5443, bind, () => {
     console.log("Synthetic API at https://" + bind + ":5443/api");
-    if (password) console.log("Accounts: mobile-admin, mobile-resident, mobile-other. Temporary password: " + password);
+    if (password) {
+      console.log("Isolated fixture database: " + database);
+      console.log("Temporary password: " + password);
+    }
   });
   for (const signal of ["SIGINT", "SIGTERM"]) {
     process.once(signal, () => server.close(() => void mongoose.disconnect()));

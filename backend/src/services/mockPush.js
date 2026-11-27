@@ -3,6 +3,8 @@ const User = require("../models/User");
 const Cycle = require("../models/ParkingCycle");
 const { AuthSession } = require("../models/AuthSession");
 const { NotificationOutbox } = require("../models/AllocationWorkflow");
+const ParkingAssignment = require("../models/ParkingAssignment");
+const { realAssignmentFilter } = require("./assignmentVisibility");
 const { PushInstallation, ResidentInbox } = require("../models/PushFoundation");
 const { parkingWrite } = require("./parkingWrite");
 const { currentCycle } = require("./cycleSelection");
@@ -56,6 +58,8 @@ function dispatchSynthetic(eventId, actorId, now = new Date()) {
     }
     const effective = await currentCycle(now).session(session);
     if (!effective?.activePublicationId?.equals(job.publicationId)) return null;
+    if (!await ParkingAssignment.exists({ publicationId: job.publicationId, flatId: job.flatId,
+      ...await realAssignmentFilter(session), assignmentStatus: "ACTIVE" }).session(session)) return null;
 
     const recipients = await User.find({ flatId: job.flatId, role: "RESIDENT", isActive: { $ne: false } })
       .select("_id").session(session);

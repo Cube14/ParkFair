@@ -1,4 +1,4 @@
-const { parkingTypeFor } = require("./assignmentService");
+const { capacityFor } = require("./siddhaParking");
 
 function coverageReport({ flats, vehicles, disabledFlats, slots, resolved, exclusions, issues, issue }) {
   const activeVehicleFlats = new Set(vehicles.filter((vehicle) => vehicle.isActive !== false && vehicle.flatId)
@@ -22,17 +22,7 @@ function coverageReport({ flats, vehicles, disabledFlats, slots, resolved, exclu
   if (unassigned.length) issues.push(issue(null, "coverage", "INCOMPLETE_COVERAGE",
     "Assign every eligible flat or record and review an explicit exclusion."));
 
-  const capacity = {
-    INSIDE: { total: 0, occupied: 0, available: 0 },
-    OUTSIDE: { total: 0, occupied: 0, available: 0 },
-  };
-  for (const slot of slots) {
-    if (slot.isActive !== false && Number.isSafeInteger(slot.maxCapacity) && slot.maxCapacity >= 0) {
-      capacity[parkingTypeFor(slot)].total += slot.maxCapacity;
-    }
-  }
-  for (const assignment of resolved) capacity[assignment.parkingType].occupied++;
-  for (const group of Object.values(capacity)) group.available = group.total - group.occupied;
+  const capacity = capacityFor(slots, resolved).counts;
 
   const referenceCodes = new Set(["REQUIRED", "UNKNOWN_FLAT", "UNKNOWN_SLOT", "UNKNOWN_VEHICLE", "INACTIVE_RESIDENT",
     "INACTIVE_SLOT", "INACTIVE_VEHICLE", "VEHICLE_OWNERSHIP", "AMBIGUOUS_VEHICLE", "NO_ACTIVE_VEHICLE"]);

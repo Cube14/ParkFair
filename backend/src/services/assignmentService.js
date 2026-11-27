@@ -6,6 +6,7 @@ const ParkingSlot = require("../models/ParkingSlot");
 const Flat = require("../models/Flat");
 const Vehicle = require("../models/Vehicle");
 const { ApiError } = require("../middleware/apiErrors");
+const { DOMAIN, compatibility, occupancyIssue, parkingTypeFor, placement, slotLabel } = require("./siddhaParking");
 
 async function lockCycle(cycleId, session) {
   // Writes for the same cycle conflict and retry before checking capacity.
@@ -31,26 +32,36 @@ async function requireLegacyStaging(cycleId, session) {
   }
 }
 
-async function checkAssignment(cycleId, slot, flatId, session, excludedId) {
+async function checkAssignment(cycleId, slot, flatId, vehicle, session, excludedId) {
   if (!slot || slot.isActive === false) throw new ApiError(404, "Active parking slot not found.");
+  const managed = !!await ParkingSlot.exists({ domain: DOMAIN, isActive: true }).session(session);
+  const problem = compatibility(slot, vehicle, managed);
+  if (problem) throw new ApiError(409, problem[1]);
   const filter = { cycleId, assignmentStatus: "ACTIVE" };
   if (excludedId) filter._id = { $ne: excludedId };
-  const count = await ParkingAssignment.countDocuments({ ...filter, slotId: slot._id }).session(session);
-  if (count >= slot.maxCapacity) throw new ApiError(409, "Parking slot is full.");
+  const siblings = slot.domain === DOMAIN ? await ParkingSlot.distinct("_id", {
+    domain: DOMAIN, physicalSlotNumber: slot.physicalSlotNumber,
+  }).session(session) : [slot._id];
+  const occupants = await ParkingAssignment.find({ ...filter, slotId: { $in: siblings } }).select("slotId slotPosition").session(session);
+  const normalized = occupants.map(item => ({ slotId: item.slotId,
+    slotPosition: item.slotPosition ?? (slot.domain === DOMAIN && String(item.slotId) === String(slot.physicalSlotId) ? "FULL" : undefined) }));
+  const conflict = occupancyIssue(slot, normalized);
+  if (conflict) throw new ApiError(409, conflict[1]);
   if (await ParkingAssignment.exists({ ...filter, flatId }).session(session)) {
     throw new ApiError(409, "Flat is already assigned in this cycle.");
   }
 }
 
-function parkingTypeFor(slot) {
-  return slot.slotType === "OUTSIDE" || slot.side === "OUTSIDE" || slot.slotNumber === "OUTSIDE"
-    ? "OUTSIDE" : "INSIDE";
-}
+const assignmentFields = (slot, vehicle) => ({ slotId: slot._id, parkingType: parkingTypeFor(slot),
+  ...(slot.domain === DOMAIN && { ...placement(slot), slotNumber: slot.slotNumber, slotSide: slot.side, vehicleSize: vehicle.size }) });
 
-async function insertAssignment({ cycleId, flatId, vehicleId, slot, notes }, session) {
-  await checkAssignment(cycleId, slot, flatId, session);
+async function insertAssignment({ cycleId, flatId, vehicle, slot, notes }, session) {
+  if (!vehicle || vehicle.isActive === false || String(vehicle.flatId) !== String(flatId)) {
+    throw new ApiError(409, "Select an active vehicle belonging to this flat.");
+  }
+  await checkAssignment(cycleId, slot, flatId, vehicle, session);
   const [assignment] = await ParkingAssignment.create([{
-    cycleId, flatId, vehicleId, slotId: slot._id, parkingType: parkingTypeFor(slot), notes,
+    cycleId, flatId, vehicleId: vehicle._id, ...assignmentFields(slot, vehicle), notes,
   }], { session });
   return assignment;
 }
@@ -63,7 +74,7 @@ function createSingle({ cycleId, slotId, flatId, vehicleId, notes }) {
     if (!flat || flat.isActive === false) throw new ApiError(404, "Active flat not found.");
     const vehicle = await Vehicle.findOne({ _id: vehicleId, flatId, isActive: true }).session(session);
     if (!vehicle) throw new ApiError(400, "Select an active vehicle belonging to this flat.");
-    return insertAssignment({ cycleId, flatId, vehicleId, slot, notes }, session);
+    return insertAssignment({ cycleId, flatId, vehicle, slot, notes }, session);
   });
 }
 
@@ -72,14 +83,17 @@ function createBulk(cycleId, items) {
     await requireLegacyStaging(cycleId, session);
     const assignments = [];
     for (const item of items) {
-      const slot = await ParkingSlot.findOne({ slotNumber: item.slotNumber }).session(session);
+      const slot = await ParkingSlot.findOne({ slotNumber: slotLabel(item.slotNumber) }).session(session);
       const flat = await Flat.findOne({ flatNumber: item.flatNumber }).session(session);
       if (!flat || flat.isActive === false) throw new ApiError(404, "Active flat not found.");
-      const vehicle = await Vehicle.findOne({ flatId: flat._id, isActive: true })
-        .sort({ createdAt: 1, _id: 1 }).session(session);
+      const candidates = await Vehicle.find({ flatId: flat._id, isActive: true,
+        ...(item.vehicleNumber && { vehicleNumber: item.vehicleNumber.trim().toUpperCase() }),
+      }).sort({ createdAt: 1, _id: 1 }).limit(2).session(session);
+      if (slot?.domain === DOMAIN && candidates.length > 1) throw new ApiError(409, "Specify the registered vehicle for this flat.");
+      const [vehicle] = candidates;
       if (!vehicle) throw new ApiError(400, "An imported flat has no active vehicle.");
       assignments.push(await insertAssignment({
-        cycleId, flatId: flat._id, vehicleId: vehicle._id, slot,
+        cycleId, flatId: flat._id, vehicle, slot,
       }, session));
     }
     return assignments;
@@ -95,13 +109,13 @@ async function updateSlot(assignmentId, slotId) {
     if (!assignment) throw new ApiError(404, "Assignment not found.");
     const slot = await ParkingSlot.findById(slotId).session(session);
     if (!slot || slot.isActive === false) throw new ApiError(404, "Active parking slot not found.");
-    if (assignment.assignmentStatus === "ACTIVE") {
-      await checkAssignment(assignment.cycleId, slot, assignment.flatId, session, assignment._id);
-    }
-    assignment.slotId = slot._id;
-    assignment.parkingType = parkingTypeFor(slot);
+    const vehicle = await Vehicle.findById(assignment.vehicleId).session(session);
+    if (!vehicle || vehicle.isActive === false) throw new ApiError(409, "Select an active vehicle.");
+    await checkAssignment(assignment.cycleId, slot, assignment.flatId, vehicle, session, assignment._id);
+    assignment.set({ slotNumber: undefined, slotSide: undefined, physicalSlotNumber: undefined, slotPosition: undefined,
+      vehicleSize: undefined, ...assignmentFields(slot, vehicle) });
     return assignment.save({ session });
   });
 }
 
-module.exports = { withCycleWrite, requireLegacyStaging, parkingTypeFor, createSingle, createBulk, updateSlot };
+module.exports = { withCycleWrite, requireLegacyStaging, parkingTypeFor, createSingle, createBulk, updateSlot, insertAssignment };

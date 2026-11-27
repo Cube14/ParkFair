@@ -32,8 +32,8 @@ async function activatePublication(cycle, session, now) {
   if (!version) throw new ApiError(409, "Published revision is unavailable.");
   const checked = await assess(cycle, version, session, now);
   const stored = await ParkingAssignment.find({ publicationId: publication._id }).session(session);
-  const signature = (rows) => rows.map(({ flatId, vehicleId, slotId, parkingType }) =>
-    [flatId, vehicleId, slotId, parkingType].join(":")).sort().join("|");
+  const signature = (rows) => rows.map(({ flatId, vehicleId, slotId, parkingType, physicalSlotNumber, slotPosition, vehicleSize }) =>
+    [flatId, vehicleId, slotId, parkingType, physicalSlotNumber, slotPosition, vehicleSize].join(":")).sort().join("|");
   if (checked.issues.length || signature(checked.resolved) !== signature(stored)) {
     throw new ApiError(409, "The published chart no longer matches inventory. Publish a reviewed correction.");
   }

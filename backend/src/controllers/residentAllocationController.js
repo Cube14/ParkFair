@@ -2,11 +2,11 @@ const ParkingCycle = require("../models/ParkingCycle");
 const ParkingAssignment = require("../models/ParkingAssignment");
 const { AllocationPublication } = require("../models/AllocationWorkflow");
 const { currentCycle, societyDay, dayAfter } = require("../services/cycleSelection");
-const { visibleAssignments } = require("../services/assignmentVisibility");
+const { visibleAssignments, realAssignmentFilter } = require("../services/assignmentVisibility");
 const { ApiError } = require("../middleware/apiErrors");
 
 async function assignmentQuery(filter) {
-  return ParkingAssignment.find(filter).sort({ _id: 1 })
+  return ParkingAssignment.find({ ...filter, ...await realAssignmentFilter() }).sort({ _id: 1 })
     .populate("slotId", "slotNumber side")
     .populate("vehicleId", "vehicleNumber vehicleType")
     .populate("cycleId", "cycleName startDate endDate")
@@ -22,7 +22,8 @@ function project(row) {
     publication: row.publicationId ? {
       id: row.publicationId._id, sequence: row.publicationId.sequence, activatedAt: row.publicationId.activatedAt,
     } : null,
-    parking: { type: row.parkingType, slot: row.slotNumber ?? row.slotId?.slotNumber ?? null },
+    parking: { type: row.parkingType, slot: row.slotNumber ?? row.slotId?.slotNumber ?? null,
+      ...(row.physicalSlotNumber && { physicalSlot: row.physicalSlotNumber, position: row.slotPosition }) },
     vehicle: { id: row.vehicleId?._id ?? null, number: row.vehicleNumber ?? row.vehicleId?.vehicleNumber ?? null },
   };
 }
